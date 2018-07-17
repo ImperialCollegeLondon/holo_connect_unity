@@ -40,56 +40,37 @@ using System.Threading.Tasks;
 
 public class Source : Singleton<Source>
 {
-
-
-
-
-
     //VM IP adress used for connection
     private string host = "10.0.0.213";
     public GameObject originObj;
     public GameObject holoWorldObj;
-    public GameObject manMod;
-    public GameObject boardCam;
-    public GameObject mapPlane;
-    public GameObject camOneMarker;
-    public GameObject camTwoMarker;
-    public GameObject camThreeMarker;
-    public GameObject camFourMarker;
-    public GameObject camFiveMarker;
-    public GameObject camSixMarker;
-    public GameObject camSevenMarker;
-    public GameObject camEightMarker;
     public GameObject wheelChairObj;
     public GameObject holoLens;
     public GameObject wheelchairHolder;
     public Material errorMaterial;
-    public GameObject joystickVizPlane;
     public GameObject collisionVizPlane;
     public GameObject collisionHolder;
     public GameObject userArrow;
     public GameObject correctedArrow;
     public GameObject obsObj1;
-    public GameObject rosWorld;
     public GameObject bestPlane;
     public GameObject mirrorPlane;
     public GameObject cube3;
     public GameObject cube2;
     public GameObject cube1;
     public Camera mainCam;
-    public GameObject cursor;
     public GameObject rearViewCamPlaneOverlay;
     public int helpType;
     public int numHelpTypes;
 
     public RenderTexture mapTex;
-    private Texture2D texMapTemp;
 
     private gripManager gripHandle;
 
     public TextToSpeech TextToSpeechObj;
     private bool shouldSpeak = false;
     private string speechText = "Write a string to me before playing";
+
     //Default ROSBridge port
     private int port = 9090;
     public bool con = false;
@@ -100,20 +81,17 @@ public class Source : Singleton<Source>
     private int curPoint = 0;
     private bool pointClicked = false;
     private Vector3 cube1Pos, cube2Pos, cube3Pos;
+
     //Value that will be send to teleport_absolute
     public float tx, ty;
-    private float timeSince = 0;
-    private float keepAlive = 0;
 
     //private values for wheelchair offset 
-    private Quaternion wheelChairRotSaved;
-    private Vector3 wheelChairPosSaved;
     private Quaternion initialRot;
-    private Vector3 initialPos;
     private Quaternion savedRot;
     private Vector3 savedPos;
     private bool firstChair = true;
     private float errorMetric = 0;
+
 #if UNITY_EDITOR
     //WebSocket client from WebSocketSharp
     private WebSocket Socket;
@@ -126,34 +104,27 @@ public class Source : Singleton<Source>
     Uri server;
     DataWriter dataWriter;
 #endif
+
     string byteText;
     string byteTextMap;
     string byteTextJoystickViz;
     string byteTextCollisionViz;
     string byteTextMirror;
-    byte[] decodedBytes;
     byte[] decodedBytesCollisionViz;
     byte[] decodedBytesJoystickViz;
     byte[] decodedBytesMirror;
-    string encodedBytes;
-    Texture2D tex;
-    Texture2D solvedMapTex;
-    Texture2D texJoyStickViz;
     Texture2D texCollisionViz;
     Texture2D texMirror;
-    int positionTex = 0;
-    bool texNeedUpdate = false;
-    bool mapTexNeedUpdate = false;
     bool mirrorNeedUpdate = false;
-    bool joystickVizNeedUpdate = false;
     bool collisionVizNeedUpdate = false;
-    int collisionWidth =300;
+    int collisionWidth = 300;
 
     //variables for clock sync 
     int rosSecs = 0;
     int rosNSecs = 0;
-    float lag = 0;
-    float myTime = 0;
+
+    public float lag = 0;
+
     double startSecsFilt = 0;
     double startNSecsFilt = 0;
     DateTime startTime;
@@ -165,6 +136,7 @@ public class Source : Singleton<Source>
 
     twistArrowControler userArrowController;
     twistArrowControler correctedArrowController;
+
     float planeA;
     float planeB;
     float planeC;
@@ -174,6 +146,11 @@ public class Source : Singleton<Source>
     soundMover sm;
 
     bool allViz = true;
+
+    private triggerManager tmHoloWorld;
+    private triggerManager tmWheelChair;
+
+    planeManager planeM;
 
     void Update()
     {
@@ -218,13 +195,9 @@ public class Source : Singleton<Source>
             cube3Ren.enabled = false;
         }
 
-
         if (firstChair && !savedRot.Equals(new Quaternion(0, 0, 0, 0)))
         {
             firstChair = false;
-            wheelChairPosSaved = savedPos;
-            wheelChairRotSaved = savedRot;
-            initialPos = holoLens.transform.position;
             initialRot = holoLens.transform.rotation;
             //change the initial rot to be the closest rotation with only a Y component. 
             Vector3 inVect = new Vector3(1, 0, 0);
@@ -232,47 +205,8 @@ public class Source : Singleton<Source>
             outVect.y = 0;
             Vector2 inVect2;
             inVect2.x = inVect.x;
-          //  inVect2.y = inVect.z;
-          //  float pheta = Vector2.Angle(new Vector2(1, 0), inVect2);// + (3.14f / 2f);
-          //  initialRot = new Quaternion(0f, 0f, 0f, 1f);
-          //  initialRot = Quaternion.AngleAxis(pheta, new Vector3(0, 1, 0));
-         //   rosWorld.transform.position = -wheelChairPosSaved.RotateAround(new Vector3(0, 0, 0), wheelChairRotSaved);
-       //     rosWorld.transform.rotation = Quaternion.Inverse(wheelChairRotSaved);
-
         }
 
-        //Debug.Log(1/Time.deltaTime);
-        //the loadIMage function is slow. It seems that uploading the images is the problem, using low resolution texture works well. maybe set pixels using sub images is workable. or go with a representational visualisation that is low res. 
-        if (texNeedUpdate)
-        {
-            texNeedUpdate = false;
-
-            decodeTexture(byteText);
-            //float start = Time.realtimeSinceStartup;
-            tex.LoadImage(decodedBytes);
-            //Debug.Log(Time.realtimeSinceStartup -start);
-            Renderer manRenderer = manMod.GetComponent<Renderer>();
-            manRenderer.material.mainTexture = tex;
-
-
-
-        }
-        if (mapTexNeedUpdate)
-        {
-            mapTexNeedUpdate = false;
-            decodedBytes = Convert.FromBase64String(byteTextMap.Substring(1, byteTextMap.Length - 2));
-            solvedMapTex.LoadImage(decodedBytes);
-            Renderer mapRenderer = mapPlane.GetComponent<Renderer>();
-            mapRenderer.material.mainTexture = solvedMapTex;
-        }
-        if (joystickVizNeedUpdate && frameCount % 2 == 0)
-        {
-            joystickVizNeedUpdate = false;
-            decodedBytesJoystickViz = Convert.FromBase64String(byteTextJoystickViz.Substring(1, byteTextJoystickViz.Length - 2));
-            texJoyStickViz.LoadImage(decodedBytesJoystickViz);
-            Renderer joystickRenderer = joystickVizPlane.GetComponent<Renderer>();
-            joystickRenderer.material.mainTexture = texJoyStickViz;
-        }
         if (collisionVizNeedUpdate && frameCount % 2 == 1)
         {
             collisionVizNeedUpdate = false;
@@ -281,7 +215,7 @@ public class Source : Singleton<Source>
             Renderer collisionRenderer = collisionVizPlane.GetComponent<Renderer>();
             collisionWidth = texCollisionViz.width;
             collisionRenderer.material.mainTexture = texCollisionViz;
-               Vector3 thisPos = wheelchairHolder.transform.position;
+            Vector3 thisPos = wheelchairHolder.transform.position;
             thisPos.y = wheelchairHolder.transform.position.y;
             collisionHolder.transform.position = thisPos;
             collisionHolder.transform.rotation=(wheelchairHolder.transform.rotation);
@@ -296,15 +230,13 @@ public class Source : Singleton<Source>
             mirrorRenderer.material.mainTexture = texMirror;
         }
 
-
         if (shouldSpeak)
         {
             shouldSpeak = false;
             var textToSpeechObj = this.GetComponent<TextToSpeech>();
-            //textToSpeechObj.SpeakSsml(speechText);
-            TextToSpeechObj.StartSpeaking(speechText);
-            
+            TextToSpeechObj.StartSpeaking(speechText);   
         }
+
         if (isPoints && pointClicked)
         {
             pointClicked = false;
@@ -315,18 +247,16 @@ public class Source : Singleton<Source>
                 curPoint = 0;
                 isPoints = false;
             }
-
         }
-
 
 #if UNITY_EDITOR
         //Connecting in Unity play mode
         if (Input.GetKeyDown(KeyCode.C))
         {
             Connect(host);
-        
         }
-                if (Input.GetKeyDown(KeyCode.V))
+
+        if (Input.GetKeyDown(KeyCode.V))
         {
             Connect("10.42.0.97");
         }
@@ -337,33 +267,24 @@ public class Source : Singleton<Source>
             Discon();
         }
 
-        //Reset in Unity Play mode
-        if (Input.GetKeyDown(KeyCode.I))
-        {
-                SendCal();
-        }
-
         if (Input.GetKeyDown(KeyCode.H))
         {
-                sendQual(true);
+            sendQual(true);
         }
 
         if (Input.GetKeyDown(KeyCode.L))
         {
-                sendQual(false);
+            sendQual(false);
         }
+
         if (Input.GetKeyDown(KeyCode.N))
         {
-                SendNext("next");
-         //BroadcastMessage("next");
+            SendNext("next");
         }
-        if (Input.GetKeyDown(KeyCode.M))
-        {
-               
-        }
+
         if (Input.GetKeyDown(KeyCode.L))
         {
-                SendNext("clear");
+            SendNext("clear");
         }
 
 #endif
@@ -381,27 +302,23 @@ public class Source : Singleton<Source>
                 SendGaze(name, false);
                 SendPose();
                 if (frameCount % 4 == 0) sendObs(obsObj1, "/obs1");
-                if (frameCount % 60 == 0)
-                {
-                   // encodeTexture(mapTex);
-                }
-                if (frameCount % 60 == 1)
-                {
-                   // sendMapRaw(encodedBytes);
-                }
-
             }
-            //publish the head location. 
-
-            //Accessing ROS service turtle1/teleport_absolute to update turtle position
-            //SendService("/turtle1/teleport_absolute", "{\"x\": " + tx + ", \"y\": " + ty + ", \"theta\": 0}");
-        }
-        else
-        {
-
         }
 
+    }//Update
 
+    public void Start()
+    {
+        startTime = DateTime.Now;
+        texCollisionViz = new Texture2D(2, 2);
+        texMirror = new Texture2D(2, 2);
+        gripHandle = this.GetComponent<gripManager>();
+        tmHoloWorld = holoWorldObj.GetComponent<triggerManager>();
+        tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
+        userArrowController = userArrow.GetComponent<twistArrowControler>();
+        correctedArrowController = correctedArrow.GetComponent<twistArrowControler>();
+        planeM = bestPlane.GetComponent<planeManager>();
+        sm = soundObj.GetComponent<soundMover>();
     }
 
     //Tap Gesture on HL
@@ -440,7 +357,7 @@ public class Source : Singleton<Source>
 
 #endif
         }
-    }
+    }//Connect
 
     //Successfull network connection handler on HL
 #if !UNITY_EDITOR
@@ -473,16 +390,15 @@ public class Source : Singleton<Source>
     {
 #if UNITY_EDITOR
         Socket = new WebSocket("ws://" + host + ":" + port);
-        Socket.OnOpen += (sender,e) => {
+
+        Socket.OnOpen += (sender, e) => {
             con = true;
             busy = false;
             Debug.Log("connected!");
         };
+
         Socket.Connect();
 
-        //con = true;
-
-        //Socket.OnMessage +=Editor_MessageRecieved;
         while (true)
         {
             Thread.Sleep(10000);
@@ -509,78 +425,49 @@ public class Source : Singleton<Source>
         //Add code here to do something with the string that is received.
     }
 #endif
+
 #if UNITY_EDITOR
-private void Editor_MessageRecieved(object thing,MessageEventArgs e){
-    string messageString = e.Data;
-    parseMessage(messageString);
-}
+    private void Editor_MessageRecieved(object thing, MessageEventArgs e)
+    {
+        string messageString = e.Data;
+        parseMessage(messageString);
+    }
 #endif
 
     //will need exhaustive list of all topics recieved here, mostly pose for now. 
-    bool imTextDecoding = false;
 
     private void parseMessage(string inString)
     {
         var N = JSON.Parse(inString);
-        //Debug.Log(inString);
         Vector3 pos;
         Quaternion rot;
         string ourTopic;
         getMove(out ourTopic, inString, out pos, out rot);
+
         switch (ourTopic)
         {
-            case "\"/origin\"":
-
-                keepAlive = 0;
-                //Debug.Log(pos);
-        //        tmOrigin.moveToPos = pos;
-       //         tmOrigin.moveToRot = rot;
-                break;
             case "\"/holoWorld\"":
-                //Debug.Log(pos);
                 tmHoloWorld.moveToPos = pos;
                 tmHoloWorld.moveToRot = rot;
-                
-                // tmOrigin.moveToPos= pos;
-                // tmOrigin.moveToRot= rot;
                 break;
+
             case "\"/errorMetric\"":
                 errorMetric = N["msg"]["data"];
-
                 break;
+
             case "\"/wheelChairPose\"":
                 savedPos = pos;
                 pos.y = 0;
                 savedRot = rot; //have to save them so that they can be accessed in update, where I am allowed to access to the other transforms.
-                tmWheelChair.moveToPos =pos;
+                tmWheelChair.moveToPos = pos;
                 tmWheelChair.moveToRot = rot;
-
                 break;
+
             case "\"/speech\"":
                 speakMsg(inString);
                 break;
-            case "\"/imText\"":
-
-
-                texNeedUpdate = true;
-                Debug.Log("decoding");
-                if (N["msg"]["data"].ToString().Length != 0)
-                {
-                    byteText = N["msg"]["data"].ToString();
-                }
-
-
-
-
-
-                break;
-            case "\"/cameraPosArr\"":
-
-                parseArray(inString);
-                break;
 
             case "\"/pingOut\"":
-
                 parseTime(inString);
                 currTime = DateTime.Now;
                 long ticks = currTime.Ticks - startTime.Ticks;
@@ -588,17 +475,16 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                 mySecs = (int)(runTime.TotalSeconds);
                 myNSecs = (int)(runTime.Ticks % 10000000L) * 100;
                 sendBackTime(inString);
-
                 if (lag != 0)
                 {
-
                     calcBaseTime();
                 }
                 break;
+
             case "\"/lagOut\"":
                 getLag(inString);
-
                 break;
+
             case "\"/collisionVisText\"":
                 if (N["msg"]["data"].ToString().Length != 0)
                 {
@@ -606,49 +492,43 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                     collisionVizNeedUpdate = true;
                     byteTextCollisionViz = N["msg"]["data"].ToString();
                 }
-
                 break;
+
             case "\"/joystickVisText\"":
                 if (N["msg"]["data"].ToString().Length != 0)
                 {
-                    // Debug.Log("got joystick im");
-                   // joystickVizNeedUpdate = true;
-                   // byteTextJoystickViz = N["msg"]["data"].ToString();
-                    //Debug.Log(byteTextJoystickViz);
-                }
 
+                }
                 break;
+
             case "\"/mirrorText\"":
                 if (N["msg"]["data"].ToString().Length != 0)
                 {
-                    // Debug.Log("got joystick im");
                     mirrorNeedUpdate = true;
                     byteTextMirror = N["msg"]["data"].ToString();
-                    //Debug.Log(byteTextJoystickViz);
                 }
-
                 break;
-            case "\"/navigation/main_js_cmd_vel\"":
 
-                userArrowController.angular = N["msg"]["angular"]["z"];
-                userArrowController.linear = N["msg"]["linear"]["x"];
+//            case "\"/navigation/main_js_cmd_vel\"":
+//                userArrowController.angular = N["msg"]["angular"]["z"];
+//                userArrowController.linear = N["msg"]["linear"]["x"];
+//                break;
 
-                break;
-            case "\"/arta/cmd_vel\"":
-                Debug.Log("gotcorrected");
-                correctedArrowController.angular = N["msg"]["angular"]["z"];
-                correctedArrowController.linear = N["msg"]["linear"]["x"];
-                break;
+//            case "\"/arta/cmd_vel\"":
+//                Debug.Log("gotcorrected");
+//                correctedArrowController.angular = N["msg"]["angular"]["z"];
+//                correctedArrowController.linear = N["msg"]["linear"]["x"];
+//                break;
+
             case "\"bestPlane\"":
                 Debug.Log("got best plane");
                 planeM.A = N["msg"]["data"][0];
                 planeM.B = N["msg"]["data"][1];
                 planeM.C = N["msg"]["data"][2];
                 planeM.D = N["msg"]["data"][3];
-
-
                 Debug.Log(planeA.ToString() + " " + planeB.ToString() + " " + planeC.ToString() + " " + planeD.ToString());
                 break;
+
             case "\"/formatted_grid/intense_pixel\"":
                 Debug.Log("got brightest pixel location");
                 sm.x = N["msg"]["x"];
@@ -659,7 +539,7 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
 
             case "\"/hololens_experiment/common_points\"":
                 Debug.Log("got triangle");
-                publishTriangle(cube1Pos, cube2Pos, cube3Pos,inString);
+                publishTriangle(cube1Pos, cube2Pos, cube3Pos, inString);
                 break;
 
             case "\"/holoRosOffset\"":
@@ -668,8 +548,9 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                 Quaternion swappedQuaternion = new Quaternion(rot.x, rot.y, rot.z, rot.w);
                 tmHoloWorld.moveToPos = swappedPos;
                 tmHoloWorld.moveToPos.y = cube1Pos.y;
-                tmHoloWorld.moveToRot =(swappedQuaternion);
+                tmHoloWorld.moveToRot = (swappedQuaternion);
                 break;
+
             case "\"/allViz\"":
                 if (N["msg"]["data"].ToString().Contains("true"))
                 {
@@ -680,17 +561,14 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                     allViz = false;
                 }
                 break;
+
             case "fail":
                 //if in doubt refresh the connection.
-
                 break;
             default:
                 Debug.Log("Recieved unexpected topic" + N["topic"].ToString());
-
                 break;
-
         }
-
     }
 
     private void publishTriangle(Vector3 p1, Vector3 p2, Vector3 p3, string inString)
@@ -705,39 +583,38 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         N["msg"]["p2"]["y"] = 0.0f;
         N["msg"]["p2"]["z"] = p2.z;
         N["msg"]["p3"]["x"] = p3.x;
-        N["msg"]["p3"]["y"] =0.0f;
+        N["msg"]["p3"]["y"] = 0.0f;
         N["msg"]["p3"]["z"] = p3.z;
         Debug.Log(N.ToString());
         Send(N.ToString());
-    }
-
+    }//publishTriangle
 
     private void calcBaseTime()
     {
-
-
         int lagSecs = (int)lag;
         int lagNSecs = (int)((lag - lagSecs) / 1e9);
         int startSecs = rosSecs + lagSecs - mySecs;  //the time the program started on the ros clock is the time ros said plus the expected delay getting here minus the time we have been runnign
         int startNSecs = rosNSecs + lagNSecs - myNSecs;
         double ratio = 0.99;
-        //Debug.Log("sec:" + mySecs + "  nsecs:" + myNSecs);
         double error = (startSecsFilt - startSecs) + (startNSecsFilt - startNSecs) * 1e-9;
-        //Debug.Log(error);
+
         if (startSecsFilt == 0 && startNSecsFilt == 0)
         {
             startSecsFilt = startSecs;
             startNSecsFilt = startNSecs;
         }
+
         if (Mathf.Abs((float)error) < lag)
         {
             startSecsFilt = ratio * startSecsFilt + (1 - ratio) * startSecs;
             startNSecsFilt = ratio * startNSecsFilt + (1 - ratio) * startNSecs;
         }
+
         //allocate fractional seconds. 
         double leftOverSec = startSecsFilt - (double)((int)startSecsFilt);
         startNSecsFilt = startNSecsFilt + 1e9 * leftOverSec;
         startSecsFilt = (double)((int)startSecsFilt);
+
         //roll over nSecs 
         if (startNSecsFilt > 1e9)
         {
@@ -745,13 +622,14 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
             startSecsFilt = startSecsFilt + 1;
 
         }
+
         if (startNSecsFilt < 0)
         {
             startNSecsFilt = startNSecsFilt + 1e9;
             startSecsFilt = startSecsFilt - 1;
 
         }
-    }
+    }//calcBaseTime
 
     private void getLag(string inString)
     {
@@ -771,70 +649,6 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         var N = JSON.Parse(inString);
         N["topic"] = "/holoPing";
         Send(N.ToString());
-
-    }
-
-    private void decodeTexture(string inString)
-    {
-
-
-        try
-        {
-            // Debug.Log(inString.Length);
-            decodedBytes = Convert.FromBase64String(inString.Substring(1, inString.Length - 2));
-            // string decodedText = Encoding.UTF8.GetString (decodedBytes);
-            // Debug.Log(decodedText);
-            //Debug.Log(decodedBytes);
-            //Debug.Log("decoded Bytes");
-
-
-        }
-        catch (System.FormatException e)
-        {
-            Debug.Log(e);
-
-        }
-
-
-    }
-
-    private void encodeTexture(RenderTexture rtex)
-    {
-
-
-        //      try
-        //        {
-        //rtex = RenderTexture.active;
-        RenderTexture.active = rtex;
-        //if(tex)
-
-        texMapTemp.ReadPixels(new UnityEngine.Rect(0, 0, texMapTemp.width, texMapTemp.height), 0, 0);
-        byte[] pngTex = texMapTemp.EncodeToPNG();
-        encodedBytes = Convert.ToBase64String(pngTex);
-        //Convert.ToBase64CharArray(pngTex,0,pngTex.Length,encodedBytes,0);
-
-
-        //}
-        //  catch (System.FormatException e)
-        //    {
-        //          Debug.Log(e);
-
-        //       }
-
-
-    }
-
-    private void parseArray(string inString)
-    {
-        tm1.moveToPos = getPos(inString, 0);
-        tm2.moveToPos = getPos(inString, 1);
-        tm3.moveToPos = getPos(inString, 2);
-        tm4.moveToPos = getPos(inString, 3);
-        tm5.moveToPos = getPos(inString, 4);
-        //Debug.Log(tm5.moveToPos);
-        tm6.moveToPos = getPos(inString, 5);
-        tm7.moveToPos = getPos(inString, 6);
-        tm8.moveToPos = getPos(inString, 7);
     }
 
     private Vector3 getPos(string inString, int num)
@@ -853,24 +667,13 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         string toSay = N["msg"]["data"].ToString();
         speak(toSay);
     }
+
     public void speak(string toSay)
     {
         speechText = toSay;
         shouldSpeak = true;
     }
 
-    private int sendFlag = 0;
-    private triggerManager tmOrigin;
-    private triggerManager tmHoloWorld;
-    private triggerManager tmWheelChair;
-    private triggerManager tm1;
-    private triggerManager tm2;
-    private triggerManager tm3;
-    private triggerManager tm4;
-    private triggerManager tm5;
-    private triggerManager tm6;
-    private triggerManager tm7;
-    private triggerManager tm8;
     private void getMove(out string topic, string inString, out Vector3 pos, out Quaternion quat)
     {
         //being careful with the string, could contain garbage
@@ -899,39 +702,28 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
             return;
         }
 
-        //Debug.Log(N["msg"]["position"]["x"].ToString());
-
         if (float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z) || float.IsNaN(quat.x) || float.IsNaN(quat.y) || float.IsNaN(quat.z) || float.IsNaN(quat.w))
         {
             pos.Set(0, 0, 0);
             quat.Set(0, 0, 0, 1);
-
-
         }
+
         float mag = Mathf.Sqrt(Mathf.Pow(quat.x, 2) + Mathf.Pow(quat.y, 2) + Mathf.Pow(quat.z, 2) + Mathf.Pow(quat.w, 2));
         quat.x = quat.x / mag;
         quat.y = quat.y / mag;
         quat.z = quat.z / mag;
         quat.w = quat.w / mag;
-    }
-    public void startGrip()
-    {
-        speak("Started Grip");
-    }
-    public void endGrip()
-    {
-        speak("ended Grip");
-        SendGrip();
-    }
+
+    }//getMove
 
     public void startPoints()
     {
         speak("started markers");
         isPoints = true;
     }
+
     public void click()
     {
-        boardCam.SetActive(false);
         speak("click");
         SendNext("wandNext");
         if (isPoints)
@@ -951,6 +743,7 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         speak("Low quality");
         sendQual(false);
     }
+
     public void clear()
     {
         speak("clear");
@@ -959,59 +752,7 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
 
     public void next()
     {
-        //speak("next");
         Debug.Log("in source next()");
-        ////SendNext("next");
-        //helpType++;
-        //helpType = helpType % numHelpTypes;
-
-        //if(helpType == 0)
-        //{
-        //    //make sound
-        //}
-        //if(helpType == 1)
-        //{
-        //    //make arrow
-        //}
-        //if(helpType == 2)
-        //{
-        //    //make map
-        //}
-        //if(helpType == 3)
-        //{
-        //    //floor markings
-        //}
-
-
-    }
-    planeManager planeM;
-    public void Start()
-    {
-        texMapTemp = new Texture2D(256, 256);
-        startTime = DateTime.Now;
-        tex = new Texture2D(2, 2);
-        solvedMapTex = new Texture2D(2, 2);
-        texCollisionViz = new Texture2D(2, 2);
-        texMirror = new Texture2D(2, 2);
-        texJoyStickViz = new Texture2D(2, 2);
-        gripHandle = this.GetComponent<gripManager>();
-        tmOrigin = originObj.GetComponent<triggerManager>();
-        tmHoloWorld = holoWorldObj.GetComponent<triggerManager>();
-        tm1 = camOneMarker.GetComponent<triggerManager>();
-        tm2 = camTwoMarker.GetComponent<triggerManager>();
-        tm3 = camThreeMarker.GetComponent<triggerManager>();
-        tm4 = camFourMarker.GetComponent<triggerManager>();
-        tm5 = camFiveMarker.GetComponent<triggerManager>();
-        tm6 = camSixMarker.GetComponent<triggerManager>();
-        tm7 = camSevenMarker.GetComponent<triggerManager>();
-        tm8 = camEightMarker.GetComponent<triggerManager>();
-        tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
-        userArrowController = userArrow.GetComponent<twistArrowControler>();
-        correctedArrowController = correctedArrow.GetComponent<twistArrowControler>();
-        planeM = bestPlane.GetComponent<planeManager>();
-        sm = soundObj.GetComponent<soundMover>();
-
-
     }
 
     public void Discon()
@@ -1035,25 +776,23 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         return;
     }
 
-
     void OnApplicationQuit()
     {
         this.Discon();
     }
 
-
-
 #if UNITY_EDITOR
-    public void Send(string str){
+    public void Send(string str)
+    {
         busy = true;
 
         if (Socket != null && con)
         {
-
             Socket.Send(str);
         }
-            busy = false;
-}
+        busy = false;
+
+    }//Send
 #endif
 
 #if !UNITY_EDITOR
@@ -1061,20 +800,15 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
     {
         busy = true;
         await WebSock_SendMessage(messageWebSocket, str);
-
         busy = false;
     }
-
 #endif
-
 
 #if !UNITY_EDITOR
     private async Task WebSock_SendMessage(MessageWebSocket webSock, string message)
     {
-
         dataWriter.WriteString(message);
         await dataWriter.StoreAsync();
-
     }
 #endif
 
@@ -1171,48 +905,9 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         Send(qual);
         Debug.Log(nextSub);
         Send(nextSub);
-    }
 
-    /*
-    public void SendPose(){
-        //head pose;
-        var headPosition = Camera.main.transform.position;
-        var headRotation = Camera.main.transform.rotation;
-         var N = JSON.Parse("{\"op\": \"publish\", \"topic\": \"" + "/holoPose" +"\",\"type\": \"" + "geometry_msgs/Pose" + "\"}"); 
-        N["op"] = "publish";
-        N["topic"] = "/holoPose";
-            number = number +1 ;
-        N["msg"]["position"]["x"]= headPosition.x+ number;
-        N["msg"]["position"]["y"]= headPosition.y;
-        N["msg"]["position"]["z"]= headPosition.z;
+    }//Initialise
 
-
-        N["msg"]["orientation"]["x"]= headRotation.x;
-        N["msg"]["orientation"]["y"]= headRotation.y;
-        N["msg"]["orientation"]["z"]= headRotation.z;
-        N["msg"]["orientation"]["w"]= headRotation.w;
-       // Debug.Log(N.ToString());
-        try{
-            string x = "a";
-            string y = "b";
-            while ( x != y) {
-                y = x;
-                x = N.ToString();
-            }
-
-            Debug.Log(y);
-            Send(y);
-
-            //Debug.Log(N);
-            // string tosend = String.Copy(N.ToString());
-            //Debug.Log(tosend);
-            //Send(tosend);
-        }
-        catch(System.ArgumentOutOfRangeException e){
-                return;
-        }
-    }
-    */
     public static string subscribe(string topic, string type)
     {
         return "{\"op\": \"subscribe\", \"topic\": \"" + topic + "\",\"type\": \"" + type + "\"}";
@@ -1222,6 +917,7 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
     {
         return "{\"op\": \"advertise\", \"topic\": \"" + topic + "\",\"type\": \"" + type + "\"}";
     }
+
     string getObject(Vector3 start, Vector3 pointOnRay)
     {
         Vector3 dir = pointOnRay - start;
@@ -1231,10 +927,10 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         if (ishit)
         {
             name = info.collider.gameObject.name;
-            //name = hitObj.name;
         }
         return name;
     }
+
     public void SendPose()
     {
         var headPosition = Camera.main.transform.position;
@@ -1245,25 +941,25 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         mySecs = (int)(runTime.TotalSeconds);
         myNSecs = (int)(runTime.Ticks % 10000000L) * 100;
 
-
         double leftOverSec = startSecsFilt - (double)((int)startSecsFilt);
         startNSecsFilt = startNSecsFilt + 1e9 * leftOverSec;
         startSecsFilt = (double)((int)startSecsFilt);
 
         int thisNSecs = (int)(startNSecsFilt) + myNSecs;
         int thisSecs = (int)(startSecsFilt) + mySecs;
+
         if (thisNSecs > 1000000000)
         {
             thisNSecs = thisNSecs - 1000000000;
             thisSecs = thisSecs + 1;
-
         }
+
         if (thisNSecs < 0)
         {
-
             thisNSecs = thisNSecs + 1000000000;
             thisSecs = thisSecs - 1;
         }
+
         var N = "{ \"op\": \"publish\"" +
                 ", \"topic\": \"" + "/holoPose" + "\"" +
                 ", \"type\": \"" + "geometry_msgs/PoseStamped" + "\"" +
@@ -1290,9 +986,10 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                         "}" +
                     "}" +
                 "}";
-        //Debug.Log(N);
         Send(N);
-    }
+
+    }//SendPose
+
     public void sendObs(GameObject obj, string topic)
     {
         // positions in world space. 
@@ -1351,33 +1048,8 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                         "}" +
                     "}" +
                 "}";
-        //Debug.Log(N);
         Send(N);
-    }
-    public void SendGrip()
-    {
-        var gripPos = gripHandle.gripVec;
-        var gripRot = gripHandle.gripRot;
-
-        var N = "{ \"op\": \"publish\"" +
-                ", \"topic\": \"" + "/grip" + "\"" +
-                ", \"type\": \"" + "geometry_msgs/Pose" + "\"" +
-                ", \"msg\": " +
-                    "{ \"position\": " +
-                        "{ \"x\": " + gripPos.x.ToString() +
-                        ", \"y\": " + gripPos.y.ToString() +
-                        ", \"z\": " + gripPos.z.ToString() +
-                        "}" +
-                    ", \"orientation\": " +
-                        "{ \"x\": " + gripRot.x.ToString() +
-                        ", \"y\": " + gripRot.y.ToString() +
-                        ", \"z\": " + gripRot.z.ToString() +
-                        ", \"w\": " + gripRot.w.ToString() +
-                        "}" +
-                    "}" +
-                "}";
-        Send(N);
-    }
+    }//sendObs
 
     public void SendNext(string type)
     {
@@ -1393,16 +1065,16 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         {
             return;
         }
-    }
+
+    }//SendNext
 
     //publishes to the gaze topics, eyehead = 1 is eye gaze, =0 is head gaze.
     public void SendGaze(string obj, bool eyeHead)
     {
         if (con)
         {
-            //var N1 = JSON.Parse("{\"op\": \"publish\", \"topic\": \"" + "\"/holoNext\"" + "\",\"type\": \"" + "std_msgs/String" + "\"}");
-            //Debug.Log(N1.ToString());
             string topic;
+
             if (eyeHead)
             {
                 topic = "\"/eyeGaze\"";
@@ -1428,10 +1100,11 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                 return;
             }
         }
-    }
+
+    }//SendGaze
+
     public void publishPointClicked(int i)
     {
-
         var N = "{ \"op\": \"publish\"" +
                 ", \"topic\": \"" + "/pointClicked" + "\"" +
                 ", \"type\": \"" + "std_msgs/Int32" + "\"" +
@@ -1439,32 +1112,10 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
                 "}";
         Send(N);
 
-    }
+    }//publishPointClicked
 
-
-    public void SendCal()
-    {
-        //enable visualisation of camera 
-        boardCam.SetActive(true);
-        //head pose;
-        var headPosition = Camera.main.transform.position;
-        var headRotation = Camera.main.transform.rotation;
-        var N = JSON.Parse("{\"op\": \"publish\", \"topic\": \"" + "\"/reCalibrate\"" + "\",\"type\": \"" + "std_msgs/String" + "\"}");
-        N["msg"]["data"] = "doCal!";
-        // Debug.Log(N.ToString());
-        try
-        {
-            string tosend = N.ToString();
-            Send(tosend);
-        }
-        catch (System.ArgumentOutOfRangeException e)
-        {
-            return;
-        }
-    }
     public void sendQual(bool highLow)
     {
-
         var N = JSON.Parse("{\"op\": \"publish\", \"topic\": \"" + "\"/qual\"" + "\",\"type\": \"" + "std_msgs/String" + "\"}");
         if (highLow)
         {
@@ -1484,30 +1135,25 @@ private void Editor_MessageRecieved(object thing,MessageEventArgs e){
         {
             return;
         }
-    }
-
+    }//sendQual
 
     public void sendMapRaw(string image)
     {
-
-        //var N = JSON.Parse("{\"op\": \"publish\", \"topic\": \"" + "\"/mapRaw\"" + "\",\"type\": \"" + "std_msgs/String" + "\"}");
         string N = "{ \"op\": \"publish\"" +
         ", \"topic\": \"" + "/mapRaw" + "\"" +
         ", \"type\": \"" + "std_msgs/String" + "\"" +
         ", \"msg\":{\"data\": \"" + image + "\"}" +
         "}";
 
-        //N["msg"]["data"] = image;
-
-        // Debug.Log(N.ToString());
         try
         {
-            //string tosend = N.ToString();
             Send(N);
         }
         catch (System.ArgumentOutOfRangeException e)
         {
             return;
         }
-    }
-}
+
+    }//sendMapRaw
+
+}//Source

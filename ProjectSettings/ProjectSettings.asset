@@ -552,7 +552,7 @@ PlayerSettings:
   metroCertificatePassword: 
   metroCertificateSubject: DefaultCompany
   metroCertificateIssuer: DefaultCompany
-  metroCertificateNotAfter: 00ee7835753ad501
+  metroCertificateNotAfter: 00947d641c3cd501
   metroApplicationDescription: Wheelchair experiment
   wsaImages: {}
   metroTileShortName: 
