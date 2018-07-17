@@ -42,12 +42,9 @@ public class Source : Singleton<Source>
 {
     //VM IP adress used for connection
     private string host = "10.0.0.213";
-    public GameObject originObj;
-    public GameObject holoWorldObj;
     public GameObject wheelChairObj;
     public GameObject holoLens;
     public GameObject wheelchairHolder;
-    public Material errorMaterial;
     public GameObject collisionVizPlane;
     public GameObject collisionHolder;
     public GameObject userArrow;
@@ -55,9 +52,6 @@ public class Source : Singleton<Source>
     public GameObject obsObj1;
     public GameObject bestPlane;
     public GameObject mirrorPlane;
-    public GameObject cube3;
-    public GameObject cube2;
-    public GameObject cube1;
     public Camera mainCam;
     public GameObject rearViewCamPlaneOverlay;
     public int helpType;
@@ -80,7 +74,6 @@ public class Source : Singleton<Source>
     private bool isPoints = false;
     private int curPoint = 0;
     private bool pointClicked = false;
-    private Vector3 cube1Pos, cube2Pos, cube3Pos;
 
     //Value that will be send to teleport_absolute
     public float tx, ty;
@@ -123,6 +116,7 @@ public class Source : Singleton<Source>
     int rosSecs = 0;
     int rosNSecs = 0;
 
+    [HideInInspector]
     public float lag = 0;
 
     double startSecsFilt = 0;
@@ -134,9 +128,6 @@ public class Source : Singleton<Source>
     int myNSecs = 0;
     int frameCount = 0;
 
-    twistArrowControler userArrowController;
-    twistArrowControler correctedArrowController;
-
     float planeA;
     float planeB;
     float planeC;
@@ -145,55 +136,24 @@ public class Source : Singleton<Source>
     public GameObject soundObj;
     soundMover sm;
 
-    bool allViz = true;
-
-    private triggerManager tmHoloWorld;
     private triggerManager tmWheelChair;
 
     planeManager planeM;
 
+    public void Start()
+    {
+        startTime = DateTime.Now;
+        texCollisionViz = new Texture2D(2, 2);
+        texMirror = new Texture2D(2, 2);
+        gripHandle = this.GetComponent<gripManager>();
+        tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
+        planeM = bestPlane.GetComponent<planeManager>();
+        sm = soundObj.GetComponent<soundMover>();
+    }
+
     void Update()
     {
         name = getObject(holoLens.transform.position, holoLens.transform.position + holoLens.transform.forward);
-        Debug.Log(name);
-        cube1Pos = cube1.transform.position;
-        cube2Pos = cube2.transform.position;
-        cube3Pos = cube3.transform.position;
-        errorMaterial.SetFloat("_Transparency", errorMetric);
-        
-        Renderer userArrowRen = userArrow.GetComponentsInChildren<Renderer>()[0];
-        Renderer correctedArrowRen = correctedArrow.GetComponentsInChildren<Renderer>()[0];
-        Renderer mirrorPlaneRen = mirrorPlane.GetComponent<Renderer>();
-        Renderer collisionVizPlaneRen = collisionVizPlane.GetComponent<Renderer>();
-        Renderer rearViewCamPlaneOverlayRen = rearViewCamPlaneOverlay.GetComponent<Renderer>();
-        Renderer cube1Ren = cube1.GetComponent<Renderer>();
-        Renderer cube2Ren = cube2.GetComponent<Renderer>();
-        Renderer cube3Ren = cube3.GetComponent<Renderer>();
-
-        if (allViz)
-        {
-
-            userArrowRen.enabled = true;
-            correctedArrowRen.enabled = true;
-            mirrorPlaneRen.enabled = true;
-            collisionVizPlaneRen.enabled = true;
-            rearViewCamPlaneOverlayRen.enabled = true;
-            cube1Ren.enabled = true;
-            cube2Ren.enabled = true;
-            cube3Ren.enabled = true;
-
-        }
-        else
-        {
-            userArrowRen.enabled = false;
-            correctedArrowRen.enabled = false;
-            mirrorPlaneRen.enabled = false;
-            collisionVizPlaneRen.enabled = false;
-            rearViewCamPlaneOverlayRen.enabled = false;
-            cube1Ren.enabled = false;
-            cube2Ren.enabled = false;
-            cube3Ren.enabled = false;
-        }
 
         if (firstChair && !savedRot.Equals(new Quaternion(0, 0, 0, 0)))
         {
@@ -306,20 +266,6 @@ public class Source : Singleton<Source>
         }
 
     }//Update
-
-    public void Start()
-    {
-        startTime = DateTime.Now;
-        texCollisionViz = new Texture2D(2, 2);
-        texMirror = new Texture2D(2, 2);
-        gripHandle = this.GetComponent<gripManager>();
-        tmHoloWorld = holoWorldObj.GetComponent<triggerManager>();
-        tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
-        userArrowController = userArrow.GetComponent<twistArrowControler>();
-        correctedArrowController = correctedArrow.GetComponent<twistArrowControler>();
-        planeM = bestPlane.GetComponent<planeManager>();
-        sm = soundObj.GetComponent<soundMover>();
-    }
 
     //Tap Gesture on HL
 #if !UNITY_EDITOR
@@ -446,10 +392,6 @@ public class Source : Singleton<Source>
 
         switch (ourTopic)
         {
-            case "\"/holoWorld\"":
-                tmHoloWorld.moveToPos = pos;
-                tmHoloWorld.moveToRot = rot;
-                break;
 
             case "\"/errorMetric\"":
                 errorMetric = N["msg"]["data"];
@@ -481,10 +423,6 @@ public class Source : Singleton<Source>
                 }
                 break;
 
-            case "\"/lagOut\"":
-                getLag(inString);
-                break;
-
             case "\"/collisionVisText\"":
                 if (N["msg"]["data"].ToString().Length != 0)
                 {
@@ -509,17 +447,6 @@ public class Source : Singleton<Source>
                 }
                 break;
 
-            case "\"/navigation/main_js_cmd_vel\"":
-                userArrowController.angular = N["msg"]["angular"]["z"];
-                userArrowController.linear = N["msg"]["linear"]["x"];
-                break;
-
-            case "\"/arta/cmd_vel\"":
-                Debug.Log("gotcorrected");
-                correctedArrowController.angular = N["msg"]["angular"]["z"];
-                correctedArrowController.linear = N["msg"]["linear"]["x"];
-                break;
-
             case "\"bestPlane\"":
                 Debug.Log("got best plane");
                 planeM.A = N["msg"]["data"][0];
@@ -539,27 +466,7 @@ public class Source : Singleton<Source>
 
             case "\"/hololens_experiment/common_points\"":
                 Debug.Log("got triangle");
-                publishTriangle(cube1Pos, cube2Pos, cube3Pos, inString);
-                break;
-
-            case "\"/holoRosOffset\"":
-                Debug.Log("got hololens/ros offset");
-                Vector3 swappedPos = new Vector3(pos.x, pos.y, pos.z);
-                Quaternion swappedQuaternion = new Quaternion(rot.x, rot.y, rot.z, rot.w);
-                tmHoloWorld.moveToPos = swappedPos;
-                tmHoloWorld.moveToPos.y = cube1Pos.y;
-                tmHoloWorld.moveToRot = (swappedQuaternion);
-                break;
-
-            case "\"/allViz\"":
-                if (N["msg"]["data"].ToString().Contains("true"))
-                {
-                    allViz = true;
-                }
-                else
-                {
-                    allViz = false;
-                }
+                publishTriangle(Cube1.Instance.transform.position, Cube2.Instance.transform.position, Cube3.Instance.transform.position, inString);
                 break;
 
             case "fail":
@@ -630,12 +537,6 @@ public class Source : Singleton<Source>
 
         }
     }//calcBaseTime
-
-    private void getLag(string inString)
-    {
-        var N = JSON.Parse(inString);
-        lag = N["msg"]["data"];
-    }
 
     private void parseTime(string inString)
     {
@@ -820,18 +721,12 @@ public class Source : Singleton<Source>
 #endif
         string bestPlaneSub = subscribe("bestPlane", "std_msgs/Float32MultiArray");
         string obs1pub = advertise("/obs1", "geometry_msgs/PoseStamped");
-        string userTwistSub = subscribe("/navigation/main_js_cmd_vel", "geometry_msgs/Twist");
-        string correctedTwistSub = subscribe("/arta/cmd_vel", "geometry_msgs/Twist");
-        string lagSub = subscribe("/lagOut", "std_msgs/Float32");
-        string errorMetricSub = subscribe("/errorMetric", "std_msgs/Float32");
         string holoPingAdv = advertise("/holoPing", "std_msgs/Time");
         string pingOutSub = subscribe("/pingOut", "std_msgs/Time");
         string advStr = advertise("/holoPose", "geometry_msgs/PoseStamped");
         string advReCal = advertise("/reCalibrate", "std_msgs/String");
         string qual = advertise("/qual", "std_msgs/String");
         string advpointClicked = advertise("/pointClicked", "std_msgs/Int32");
-        string originSub = subscribe("/origin", "geometry_msgs/Pose");
-        string holoWorldSub = subscribe("/holoWorld", "geometry_msgs/Pose");
         string wheelChairSub = subscribe("/wheelChairPose", "geometry_msgs/Pose");
         string speechSub = subscribe("/speech", "std_msgs/String");
         string imTextSub = subscribe("/imText", "std_msgs/String");
@@ -844,16 +739,10 @@ public class Source : Singleton<Source>
         string mirrorSub = subscribe("/mirrorText", "std_msgs/String");
         string trianglePointsSub = subscribe("/hololens_experiment/common_points", "/hololens_experiment/CommonPoints");
         string trianglePointsPub = advertise("/hololens/commonPoints", "/hololens_experiment/CommonPoints");
-        string holoRosOffset = subscribe("/holoRosOffset", "geometry_msgs/Pose");
         string headGazeSub = advertise("/headGaze", "std_msgs/String");  
-        string allVizSub = subscribe("/allViz", "std_msgs/String");
 
-        Debug.Log(allVizSub);
-        Send(allVizSub);
         Debug.Log(headGazeSub);
         Send(headGazeSub);
-        Debug.Log(holoRosOffset);
-        Send(holoRosOffset);
         Debug.Log(trianglePointsPub);
         Send(trianglePointsPub);
         Debug.Log(trianglePointsSub);
@@ -864,24 +753,16 @@ public class Source : Singleton<Source>
         Send(intensePixelSub);
         Debug.Log(bestPlaneSub);
         Send(bestPlaneSub);
-        Debug.Log(userTwistSub);
-        Send(obs1pub);
         Debug.Log(obs1pub);
-        Send(userTwistSub);
-        Debug.Log(correctedTwistSub);
-        Send(correctedTwistSub);
+        Send(obs1pub);
         Debug.Log(collisionVizSub);
         Send(collisionVizSub);
         Debug.Log(joystickVizSub);
         Send(joystickVizSub);
-        Debug.Log(errorMetricSub);
-        Send(errorMetricSub);
         Debug.Log(wheelChairSub);
         Send(wheelChairSub);
         Debug.Log(mapPub);
         Send(mapPub);
-        Debug.Log(lagSub);
-        Send(lagSub);
         Debug.Log(holoPingAdv);
         Send(holoPingAdv);
         Debug.Log(pingOutSub);
@@ -890,10 +771,6 @@ public class Source : Singleton<Source>
         Send(advpointClicked);
         Debug.Log(advStr);
         Send(advStr);
-        Debug.Log(holoWorldSub);
-        Send(holoWorldSub);
-        Debug.Log(originSub);
-        Send(originSub);
         Debug.Log(advReCal);
         Send(advReCal);
         Send(speechSub);
