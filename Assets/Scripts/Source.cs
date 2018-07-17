@@ -509,16 +509,16 @@ public class Source : Singleton<Source>
                 }
                 break;
 
-//            case "\"/navigation/main_js_cmd_vel\"":
-//                userArrowController.angular = N["msg"]["angular"]["z"];
-//                userArrowController.linear = N["msg"]["linear"]["x"];
-//                break;
+            case "\"/navigation/main_js_cmd_vel\"":
+                userArrowController.angular = N["msg"]["angular"]["z"];
+                userArrowController.linear = N["msg"]["linear"]["x"];
+                break;
 
-//            case "\"/arta/cmd_vel\"":
-//                Debug.Log("gotcorrected");
-//                correctedArrowController.angular = N["msg"]["angular"]["z"];
-//                correctedArrowController.linear = N["msg"]["linear"]["x"];
-//                break;
+            case "\"/arta/cmd_vel\"":
+                Debug.Log("gotcorrected");
+                correctedArrowController.angular = N["msg"]["angular"]["z"];
+                correctedArrowController.linear = N["msg"]["linear"]["x"];
+                break;
 
             case "\"bestPlane\"":
                 Debug.Log("got best plane");
