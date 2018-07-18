@@ -61,10 +61,6 @@ public class Source : Singleton<Source>
 
     private gripManager gripHandle;
 
-    public TextToSpeech TextToSpeechObj;
-    private bool shouldSpeak = false;
-    private string speechText = "Write a string to me before playing";
-
     //Default ROSBridge port
     private int port = 9090;
     public bool con = false;
@@ -80,8 +76,10 @@ public class Source : Singleton<Source>
 
     //private values for wheelchair offset 
     private Quaternion initialRot;
-    private Quaternion savedRot;
-    private Vector3 savedPos;
+
+    [HideInInspector]
+    public Quaternion savedRot;
+
     private bool firstChair = true;
     private float errorMetric = 0;
 
@@ -136,9 +134,10 @@ public class Source : Singleton<Source>
     public GameObject soundObj;
     soundMover sm;
 
-    private triggerManager tmWheelChair;
-
     planeManager planeM;
+
+    //To maintain Speak functionality
+    TextToSpeech TextToSpeechObj;
 
     public void Start()
     {
@@ -146,9 +145,11 @@ public class Source : Singleton<Source>
         texCollisionViz = new Texture2D(2, 2);
         texMirror = new Texture2D(2, 2);
         gripHandle = this.GetComponent<gripManager>();
-        tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
         planeM = bestPlane.GetComponent<planeManager>();
         sm = soundObj.GetComponent<soundMover>();
+
+        //To maintain Speak functionality
+        TextToSpeechObj = GetComponent<TextToSpeech>();
     }
 
     void Update()
@@ -188,13 +189,6 @@ public class Source : Singleton<Source>
             texMirror.LoadImage(decodedBytesMirror);
             Renderer mirrorRenderer = mirrorPlane.GetComponent<Renderer>();
             mirrorRenderer.material.mainTexture = texMirror;
-        }
-
-        if (shouldSpeak)
-        {
-            shouldSpeak = false;
-            var textToSpeechObj = this.GetComponent<TextToSpeech>();
-            TextToSpeechObj.StartSpeaking(speechText);   
         }
 
         if (isPoints && pointClicked)
@@ -314,7 +308,7 @@ public class Source : Singleton<Source>
         {
             //Guarenteed connection
             con = true;
-            speak("connected");
+           TextToSpeechObj.StartSpeaking("connected");
 
             Debug.Log("connected!");
             busy = false;
@@ -397,18 +391,6 @@ public class Source : Singleton<Source>
                 errorMetric = N["msg"]["data"];
                 break;
 
-            case "\"/wheelChairPose\"":
-                savedPos = pos;
-                pos.y = 0;
-                savedRot = rot; //have to save them so that they can be accessed in update, where I am allowed to access to the other transforms.
-                tmWheelChair.moveToPos = pos;
-                tmWheelChair.moveToRot = rot;
-                break;
-
-            case "\"/speech\"":
-                speakMsg(inString);
-                break;
-
             case "\"/pingOut\"":
                 parseTime(inString);
                 currTime = DateTime.Now;
@@ -429,13 +411,6 @@ public class Source : Singleton<Source>
                     Debug.Log("got colision Image");
                     collisionVizNeedUpdate = true;
                     byteTextCollisionViz = N["msg"]["data"].ToString();
-                }
-                break;
-
-            case "\"/joystickVisText\"":
-                if (N["msg"]["data"].ToString().Length != 0)
-                {
-
                 }
                 break;
 
@@ -472,6 +447,7 @@ public class Source : Singleton<Source>
             case "fail":
                 //if in doubt refresh the connection.
                 break;
+
             default:
                 Debug.Log("Recieved unexpected topic" + N["topic"].ToString());
                 break;
@@ -562,19 +538,6 @@ public class Source : Singleton<Source>
         return ret;
     }
 
-    private void speakMsg(string inString)
-    {
-        var N = JSON.Parse(inString);
-        string toSay = N["msg"]["data"].ToString();
-        speak(toSay);
-    }
-
-    public void speak(string toSay)
-    {
-        speechText = toSay;
-        shouldSpeak = true;
-    }
-
     private void getMove(out string topic, string inString, out Vector3 pos, out Quaternion quat)
     {
         //being careful with the string, could contain garbage
@@ -619,13 +582,13 @@ public class Source : Singleton<Source>
 
     public void startPoints()
     {
-        speak("started markers");
+        TextToSpeechObj.StartSpeaking("started markers");
         isPoints = true;
     }
 
     public void click()
     {
-        speak("click");
+        TextToSpeechObj.StartSpeaking("click");
         SendNext("wandNext");
         if (isPoints)
         {
@@ -635,19 +598,19 @@ public class Source : Singleton<Source>
 
     public void highQual()
     {
-        speak("High quality");
+        TextToSpeechObj.StartSpeaking("High quality");
         sendQual(true);
     }
 
     public void lowQual()
     {
-        speak("Low quality");
+        TextToSpeechObj.StartSpeaking("Low quality");
         sendQual(false);
     }
 
     public void clear()
     {
-        speak("clear");
+        TextToSpeechObj.StartSpeaking("clear");
         SendNext("clear");
     }
 
@@ -673,7 +636,7 @@ public class Source : Singleton<Source>
         con = false;
 #endif
         isInit = false;
-        speak("disconnected");
+        TextToSpeechObj.StartSpeaking("disconnected");
         return;
     }
 
@@ -727,14 +690,11 @@ public class Source : Singleton<Source>
         string advReCal = advertise("/reCalibrate", "std_msgs/String");
         string qual = advertise("/qual", "std_msgs/String");
         string advpointClicked = advertise("/pointClicked", "std_msgs/Int32");
-        string wheelChairSub = subscribe("/wheelChairPose", "geometry_msgs/Pose");
-        string speechSub = subscribe("/speech", "std_msgs/String");
-        string imTextSub = subscribe("/imText", "std_msgs/String");
-        string arraySub = subscribe("/cameraPosArr", "geometry_msgs/PoseArray");
+
         string nextSub = advertise("/holoNext", "std_msgs/String");
         string mapPub = advertise("/mapRaw", "std_msgs/String");
         string collisionVizSub = subscribe("/collisionVisText", "std_msgs/String");
-        string joystickVizSub = subscribe("/joystickVisText", "std_msgs/String");
+
         string intensePixelSub = subscribe("/formatted_grid/intense_pixel", "hololens_experiment/IntensePixel");
         string mirrorSub = subscribe("/mirrorText", "std_msgs/String");
         string trianglePointsSub = subscribe("/hololens_experiment/common_points", "/hololens_experiment/CommonPoints");
@@ -757,10 +717,6 @@ public class Source : Singleton<Source>
         Send(obs1pub);
         Debug.Log(collisionVizSub);
         Send(collisionVizSub);
-        Debug.Log(joystickVizSub);
-        Send(joystickVizSub);
-        Debug.Log(wheelChairSub);
-        Send(wheelChairSub);
         Debug.Log(mapPub);
         Send(mapPub);
         Debug.Log(holoPingAdv);
@@ -773,11 +729,6 @@ public class Source : Singleton<Source>
         Send(advStr);
         Debug.Log(advReCal);
         Send(advReCal);
-        Send(speechSub);
-        Debug.Log(arraySub);
-        Send(arraySub);
-        Debug.Log(imTextSub);
-        Send(imTextSub);
         Debug.Log(qual);
         Send(qual);
         Debug.Log(nextSub);
