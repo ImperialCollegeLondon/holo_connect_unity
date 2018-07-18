@@ -9,6 +9,11 @@
 Assets/AssetStoreTools*
 Assets/HoloToolkit/
 
+Assets/WSATestCertificate.pfx.meta
+Assets/csc.rsp.meta
+Assets/mcs.rsp.meta
+Assets/HoloToolkit.meta
+
 # Visual Studio cache directory
 .vs/
 

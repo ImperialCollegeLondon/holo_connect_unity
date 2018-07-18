@@ -42,46 +42,31 @@ public class Source : Singleton<Source>
 {
     //VM IP adress used for connection
     private string host = "10.0.0.213";
+
     public GameObject wheelChairObj;
     public GameObject holoLens;
-    public GameObject wheelchairHolder;
-    public GameObject collisionVizPlane;
-    public GameObject collisionHolder;
-    public GameObject userArrow;
-    public GameObject correctedArrow;
     public GameObject obsObj1;
-    public GameObject bestPlane;
-    public GameObject mirrorPlane;
-    public Camera mainCam;
-    public GameObject rearViewCamPlaneOverlay;
-    public int helpType;
-    public int numHelpTypes;
 
-    public RenderTexture mapTex;
+    [HideInInspector]
+    public bool con = false;
+
+    [HideInInspector]
+    public Quaternion savedRot;
 
     private gripManager gripHandle;
 
     //Default ROSBridge port
     private int port = 9090;
-    public bool con = false;
-
     private bool isInit = false;
     private bool busy = false;
     private bool isPoints = false;
     private int curPoint = 0;
     private bool pointClicked = false;
 
-    //Value that will be send to teleport_absolute
-    public float tx, ty;
-
     //private values for wheelchair offset 
     private Quaternion initialRot;
 
-    [HideInInspector]
-    public Quaternion savedRot;
-
     private bool firstChair = true;
-    private float errorMetric = 0;
 
 #if UNITY_EDITOR
     //WebSocket client from WebSocketSharp
@@ -96,26 +81,9 @@ public class Source : Singleton<Source>
     DataWriter dataWriter;
 #endif
 
-    string byteText;
-    string byteTextMap;
-    string byteTextJoystickViz;
-    string byteTextCollisionViz;
-    string byteTextMirror;
-    byte[] decodedBytesCollisionViz;
-    byte[] decodedBytesJoystickViz;
-    byte[] decodedBytesMirror;
-    Texture2D texCollisionViz;
-    Texture2D texMirror;
-    bool mirrorNeedUpdate = false;
-    bool collisionVizNeedUpdate = false;
-    int collisionWidth = 300;
-
     //variables for clock sync 
     int rosSecs = 0;
     int rosNSecs = 0;
-
-    [HideInInspector]
-    public float lag = 0;
 
     double startSecsFilt = 0;
     double startNSecsFilt = 0;
@@ -124,28 +92,23 @@ public class Source : Singleton<Source>
     TimeSpan runTime;
     int mySecs = 0;
     int myNSecs = 0;
-    int frameCount = 0;
-
-    float planeA;
-    float planeB;
-    float planeC;
-    float planeD;
 
     public GameObject soundObj;
     soundMover sm;
 
-    planeManager planeM;
-
     //To maintain Speak functionality
     TextToSpeech TextToSpeechObj;
+
+    //Still need it for Migration
+    [HideInInspector]
+    public float lag = 0;
+    [HideInInspector]
+    public int frameCount = 0, collisionWidth = 300;
 
     public void Start()
     {
         startTime = DateTime.Now;
-        texCollisionViz = new Texture2D(2, 2);
-        texMirror = new Texture2D(2, 2);
         gripHandle = this.GetComponent<gripManager>();
-        planeM = bestPlane.GetComponent<planeManager>();
         sm = soundObj.GetComponent<soundMover>();
 
         //To maintain Speak functionality
@@ -166,29 +129,6 @@ public class Source : Singleton<Source>
             outVect.y = 0;
             Vector2 inVect2;
             inVect2.x = inVect.x;
-        }
-
-        if (collisionVizNeedUpdate && frameCount % 2 == 1)
-        {
-            collisionVizNeedUpdate = false;
-            decodedBytesCollisionViz = Convert.FromBase64String(byteTextCollisionViz.Substring(1, byteTextCollisionViz.Length - 2));
-            texCollisionViz.LoadImage(decodedBytesCollisionViz);
-            Renderer collisionRenderer = collisionVizPlane.GetComponent<Renderer>();
-            collisionWidth = texCollisionViz.width;
-            collisionRenderer.material.mainTexture = texCollisionViz;
-            Vector3 thisPos = wheelchairHolder.transform.position;
-            thisPos.y = wheelchairHolder.transform.position.y;
-            collisionHolder.transform.position = thisPos;
-            collisionHolder.transform.rotation=(wheelchairHolder.transform.rotation);
-        }
-
-        if (mirrorNeedUpdate && frameCount % 2 == 1 && byteTextMirror.Length !=0)
-        {
-            mirrorNeedUpdate = false;
-            decodedBytesMirror = Convert.FromBase64String(byteTextMirror.Substring(1, byteTextMirror.Length - 2));
-            texMirror.LoadImage(decodedBytesMirror);
-            Renderer mirrorRenderer = mirrorPlane.GetComponent<Renderer>();
-            mirrorRenderer.material.mainTexture = texMirror;
         }
 
         if (isPoints && pointClicked)
@@ -387,10 +327,6 @@ public class Source : Singleton<Source>
         switch (ourTopic)
         {
 
-            case "\"/errorMetric\"":
-                errorMetric = N["msg"]["data"];
-                break;
-
             case "\"/pingOut\"":
                 parseTime(inString);
                 currTime = DateTime.Now;
@@ -403,32 +339,6 @@ public class Source : Singleton<Source>
                 {
                     calcBaseTime();
                 }
-                break;
-
-            case "\"/collisionVisText\"":
-                if (N["msg"]["data"].ToString().Length != 0)
-                {
-                    Debug.Log("got colision Image");
-                    collisionVizNeedUpdate = true;
-                    byteTextCollisionViz = N["msg"]["data"].ToString();
-                }
-                break;
-
-            case "\"/mirrorText\"":
-                if (N["msg"]["data"].ToString().Length != 0)
-                {
-                    mirrorNeedUpdate = true;
-                    byteTextMirror = N["msg"]["data"].ToString();
-                }
-                break;
-
-            case "\"bestPlane\"":
-                Debug.Log("got best plane");
-                planeM.A = N["msg"]["data"][0];
-                planeM.B = N["msg"]["data"][1];
-                planeM.C = N["msg"]["data"][2];
-                planeM.D = N["msg"]["data"][3];
-                Debug.Log(planeA.ToString() + " " + planeB.ToString() + " " + planeC.ToString() + " " + planeD.ToString());
                 break;
 
             case "\"/formatted_grid/intense_pixel\"":
@@ -682,24 +592,19 @@ public class Source : Singleton<Source>
 #if UNITY_EDITOR
         Socket.OnMessage+= Editor_MessageRecieved;
 #endif
-        string bestPlaneSub = subscribe("bestPlane", "std_msgs/Float32MultiArray");
         string obs1pub = advertise("/obs1", "geometry_msgs/PoseStamped");
         string holoPingAdv = advertise("/holoPing", "std_msgs/Time");
-        string pingOutSub = subscribe("/pingOut", "std_msgs/Time");
         string advStr = advertise("/holoPose", "geometry_msgs/PoseStamped");
-        string advReCal = advertise("/reCalibrate", "std_msgs/String");
         string qual = advertise("/qual", "std_msgs/String");
         string advpointClicked = advertise("/pointClicked", "std_msgs/Int32");
-
         string nextSub = advertise("/holoNext", "std_msgs/String");
         string mapPub = advertise("/mapRaw", "std_msgs/String");
-        string collisionVizSub = subscribe("/collisionVisText", "std_msgs/String");
+        string trianglePointsPub = advertise("/hololens/commonPoints", "/hololens_experiment/CommonPoints");
+        string headGazeSub = advertise("/headGaze", "std_msgs/String");
 
         string intensePixelSub = subscribe("/formatted_grid/intense_pixel", "hololens_experiment/IntensePixel");
-        string mirrorSub = subscribe("/mirrorText", "std_msgs/String");
         string trianglePointsSub = subscribe("/hololens_experiment/common_points", "/hololens_experiment/CommonPoints");
-        string trianglePointsPub = advertise("/hololens/commonPoints", "/hololens_experiment/CommonPoints");
-        string headGazeSub = advertise("/headGaze", "std_msgs/String");  
+        string pingOutSub = subscribe("/pingOut", "std_msgs/Time");
 
         Debug.Log(headGazeSub);
         Send(headGazeSub);
@@ -707,16 +612,10 @@ public class Source : Singleton<Source>
         Send(trianglePointsPub);
         Debug.Log(trianglePointsSub);
         Send(trianglePointsSub);
-        Debug.Log(mirrorSub);
-        Send(mirrorSub);
         Debug.Log(intensePixelSub);
         Send(intensePixelSub);
-        Debug.Log(bestPlaneSub);
-        Send(bestPlaneSub);
         Debug.Log(obs1pub);
         Send(obs1pub);
-        Debug.Log(collisionVizSub);
-        Send(collisionVizSub);
         Debug.Log(mapPub);
         Send(mapPub);
         Debug.Log(holoPingAdv);
@@ -727,8 +626,6 @@ public class Source : Singleton<Source>
         Send(advpointClicked);
         Debug.Log(advStr);
         Send(advStr);
-        Debug.Log(advReCal);
-        Send(advReCal);
         Debug.Log(qual);
         Send(qual);
         Debug.Log(nextSub);
