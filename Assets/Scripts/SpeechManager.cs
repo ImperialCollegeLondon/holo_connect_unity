@@ -8,15 +8,6 @@ public class SpeechManager : MonoBehaviour
     KeywordRecognizer keywordRecognizer = null;
     Dictionary<string, System.Action> keywords = new Dictionary<string, System.Action>();
 
-    public GameObject camOneMarker;
-    public GameObject camTwoMarker;
-    public GameObject camThreeMarker;
-    public GameObject camFourMarker;
-    public GameObject camFiveMarker;
-    public GameObject camSixMarker;
-    public GameObject camSevenMarker;
-    public GameObject camEightMarker;
-    public GameObject wand;
     public GameObject sourceHandle;
     public GameObject mainCamera;
 
@@ -29,49 +20,7 @@ public class SpeechManager : MonoBehaviour
             // Call the OnReset method on every descendant object.
             this.BroadcastMessage("OnReset");
         });
-
-        keywords.Add("Drop Sphere", () =>
-        {
-            var focusObject = GazeGestureManager.Instance.FocusedObject;
-            if (focusObject != null)
-            {
-                // Call the OnDrop method on just the focused object.
-                focusObject.SendMessage("OnDrop");
-            }
-        });
-
-        keywords.Add("Camera one", () =>
-        {
-            camOneMarker.SendMessage("OnTrigger");
-        });
-        keywords.Add("Camera two", () =>
-        {
-           	camTwoMarker.SendMessage("OnTrigger");
-        });
-        keywords.Add("Camera three", () =>
-        {
-       		camThreeMarker.SendMessage("OnTrigger");
-        });
-        keywords.Add("Camera four", () =>
-        {
-       		camFourMarker.SendMessage("OnTrigger");
-        });
-        keywords.Add("Camera five", () =>
-        {
-            camFiveMarker.SendMessage("OnTrigger");
-        });
-        keywords.Add("Camera six", () =>
-        {
-           	camSixMarker.SendMessage("OnTrigger");
-        });
-        keywords.Add("Camera seven", () =>
-        {
-            camSevenMarker.SendMessage("OnTrigger");
-        });
-        keywords.Add("Camera eight", () =>
-        {
-           	camEightMarker.SendMessage("OnTrigger");
-        });
+        
         keywords.Add("grip", () =>
         {
             this.BroadcastMessage("startGrip");
@@ -89,24 +38,6 @@ public class SpeechManager : MonoBehaviour
         keywords.Add("click", () =>
         {
             this.BroadcastMessage("click");
-        });
-
-        keywords.Add("Place", () =>
-        {
-
-                // Call the OnDrop method on just the focused object.
-           	camOneMarker.SendMessage("OnPlace");
-           	camTwoMarker.SendMessage("OnPlace");
-
-        });
-
-        keywords.Add("restart", () =>
-        {
-
-                // Call the OnDrop method on just the focused object.
-           	camOneMarker.SendMessage("OnRestart");
-           	camTwoMarker.SendMessage("OnRestart");
-
         });
 
         keywords.Add("connect", () =>

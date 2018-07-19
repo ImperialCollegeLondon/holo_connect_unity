@@ -44,19 +44,15 @@ public class RosSubscriber<T>
         QueueSize = queueSize;
         MsgQueue = new Queue<T>();
 
-#if !UNITY_EDITOR
         RosMessenger.Instance.Subscribe(RosTopic, RosType);
         buffer = RosMessenger.Instance.topicBuffer[RosTopic];
 
         Debug.Log("[" + name + "] Subscribed successfully, message type: " + RosType);
-#endif
     }
 
     public void Terminate()
     {
-#if !UNITY_EDITOR
         RosMessenger.Instance.Unsubscribe(RosTopic);
-#endif
     }
 
 
