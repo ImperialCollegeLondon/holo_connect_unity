@@ -40,8 +40,6 @@ using System.Threading.Tasks;
 
 public class Source : Singleton<Source>
 {
-    //VM IP adress used for connection
-    private string host = "10.0.0.213";
     public GameObject originObj;
     public GameObject holoWorldObj;
     public GameObject wheelChairObj;
@@ -71,12 +69,8 @@ public class Source : Singleton<Source>
     private bool shouldSpeak = false;
     private string speechText = "Write a string to me before playing";
 
-    //Default ROSBridge port
-    private int port = 9090;
-    public bool con = false;
-
     private bool isInit = false;
-    private bool busy = false;
+
     private bool isPoints = false;
     private int curPoint = 0;
     private bool pointClicked = false;
@@ -91,19 +85,6 @@ public class Source : Singleton<Source>
     private Vector3 savedPos;
     private bool firstChair = true;
     private float errorMetric = 0;
-
-#if UNITY_EDITOR
-    //WebSocket client from WebSocketSharp
-    private WebSocket Socket;
-    private Thread runThread;
-#endif
-
-    //WebSocket client from Windows.Networking.Sockets
-#if !UNITY_EDITOR
-    private MessageWebSocket messageWebSocket;
-    Uri server;
-    DataWriter dataWriter;
-#endif
 
     string byteText;
     string byteTextMap;
@@ -253,18 +234,13 @@ public class Source : Singleton<Source>
         //Connecting in Unity play mode
         if (Input.GetKeyDown(KeyCode.C))
         {
-            Connect(host);
-        }
-
-        if (Input.GetKeyDown(KeyCode.V))
-        {
-            Connect("10.42.0.97");
+            RosMessenger.Instance.Connect();
         }
 
         //Disconnecting in Unity play mode
         if (Input.GetKeyDown(KeyCode.E))
         {
-            Discon();
+            RosMessenger.Instance.Disconnect();
         }
 
         if (Input.GetKeyDown(KeyCode.H))
@@ -288,14 +264,14 @@ public class Source : Singleton<Source>
         }
 
 #endif
-        if (con)
+        if (RosMessenger.Instance.Con)
         {
             frameCount++;
             if (!isInit)
             {
                 Initialise();
             }
-            if (isInit && !busy)
+            if (isInit && !RosMessenger.Instance.busy)
             {
                 name = getObject(holoLens.transform.position, holoLens.transform.position + holoLens.transform.forward);
                 Debug.Log(name);
@@ -321,122 +297,9 @@ public class Source : Singleton<Source>
         sm = soundObj.GetComponent<soundMover>();
     }
 
-    //Tap Gesture on HL
-#if !UNITY_EDITOR
-    void OnSelect()
-    {
-
-    }
-#endif
-
-    public void Connect(string address)
-    {
-        host = address;
-        //Async connection.
-        if (!con && !busy)
-        {
-            busy = true;
-            Debug.Log("connecting");
-            Debug.Log(port);
-#if UNITY_EDITOR
-            runThread = new Thread(Run);
-            runThread.Start();
-#endif
-
-# if !UNITY_EDITOR
-
-            messageWebSocket = new MessageWebSocket();
-            messageWebSocket.Control.MessageType = SocketMessageType.Utf8;
-            messageWebSocket.MessageReceived += Win_MessageReceived;
-
-            server = new Uri("ws://" + host + ":" + port.ToString());
-
-            IAsyncAction outstandingAction = messageWebSocket.ConnectAsync(server);
-            AsyncActionCompletedHandler aach = new AsyncActionCompletedHandler(NetworkConnectedHandler);
-            outstandingAction.Completed = aach;
-
-#endif
-        }
-    }//Connect
-
-    //Successfull network connection handler on HL
-#if !UNITY_EDITOR
-    public void NetworkConnectedHandler(IAsyncAction asyncInfo, AsyncStatus status)
-    {
-        // Status completed is successful.
-        if (status == AsyncStatus.Completed)
-        {
-            //Guarenteed connection
-            con = true;
-            speak("connected");
-
-            Debug.Log("connected!");
-            busy = false;
-
-
-            //Creating the writer that will be repsonsible to send a message through Rosbridge
-            dataWriter = new DataWriter(messageWebSocket.OutputStream);
-
-        }
-        else
-        {
-            con = false;
-        }
-    }
-#endif
-
-    //Starting connection between Unity play mode and ROS.
-    private void Run()
-    {
-#if UNITY_EDITOR
-        Socket = new WebSocket("ws://" + host + ":" + port);
-
-        Socket.OnOpen += (sender, e) => {
-            con = true;
-            busy = false;
-            Debug.Log("connected!");
-        };
-
-        Socket.Connect();
-
-        while (true)
-        {
-            Thread.Sleep(10000);
-        }
-#endif
-    }
-
-    //The MessageReceived event handler.
-#if !UNITY_EDITOR
-    private void Win_MessageReceived(MessageWebSocket sender, MessageWebSocketMessageReceivedEventArgs args)
-    {
-        try
-        {
-            DataReader messageReader = args.GetDataReader();
-            messageReader.UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf8;
-            string messageString = messageReader.ReadString(messageReader.UnconsumedBufferLength);
-            parseMessage(messageString);
-        }
-        catch (InvalidCastException e)
-        {
-
-        }
-
-        //Add code here to do something with the string that is received.
-    }
-#endif
-
-#if UNITY_EDITOR
-    private void Editor_MessageRecieved(object thing, MessageEventArgs e)
-    {
-        string messageString = e.Data;
-        parseMessage(messageString);
-    }
-#endif
-
     //will need exhaustive list of all topics recieved here, mostly pose for now. 
 
-    private void parseMessage(string inString)
+    public void parseMessage(string inString)
     {
         var N = JSON.Parse(inString);
         Vector3 pos;
@@ -586,7 +449,7 @@ public class Source : Singleton<Source>
         N["msg"]["p3"]["y"] = 0.0f;
         N["msg"]["p3"]["z"] = p3.z;
         Debug.Log(N.ToString());
-        Send(N.ToString());
+        RosMessenger.Instance.Send(N.ToString());
     }//publishTriangle
 
     private void calcBaseTime()
@@ -648,7 +511,7 @@ public class Source : Singleton<Source>
     {
         var N = JSON.Parse(inString);
         N["topic"] = "/holoPing";
-        Send(N.ToString());
+        RosMessenger.Instance.Send(N.ToString());
     }
 
     private Vector3 getPos(string inString, int num)
@@ -755,69 +618,16 @@ public class Source : Singleton<Source>
         Debug.Log("in source next()");
     }
 
-    public void Discon()
-    {
-        firstChair = false;
-        savedRot = new Quaternion(0, 0, 0, 0);
-        //Killing connection
-#if UNITY_EDITOR
-        runThread.Abort();
-        Socket.Close();
-        con = false;
-#endif
-
-#if !UNITY_EDITOR
-        messageWebSocket.Dispose();
-        messageWebSocket = null;
-        con = false;
-#endif
-        isInit = false;
-        speak("disconnected");
-        return;
-    }
 
     void OnApplicationQuit()
     {
-        this.Discon();
+        RosMessenger.Instance.Disconnect();
     }
-
-#if UNITY_EDITOR
-    public void Send(string str)
-    {
-        busy = true;
-
-        if (Socket != null && con)
-        {
-            Socket.Send(str);
-        }
-        busy = false;
-
-    }//Send
-#endif
-
-#if !UNITY_EDITOR
-    public async Task Send(string str)
-    {
-        busy = true;
-        await WebSock_SendMessage(messageWebSocket, str);
-        busy = false;
-    }
-#endif
-
-#if !UNITY_EDITOR
-    private async Task WebSock_SendMessage(MessageWebSocket webSock, string message)
-    {
-        dataWriter.WriteString(message);
-        await dataWriter.StoreAsync();
-    }
-#endif
 
     public void Initialise()
     {
         isInit = true;
-#if UNITY_EDITOR
-        Socket.OnMessage+= Editor_MessageRecieved;
-#endif
+
         string bestPlaneSub = subscribe("bestPlane", "std_msgs/Float32MultiArray");
         string obs1pub = advertise("/obs1", "geometry_msgs/PoseStamped");
         string userTwistSub = subscribe("/navigation/main_js_cmd_vel", "geometry_msgs/Twist");
@@ -849,62 +659,62 @@ public class Source : Singleton<Source>
         string allVizSub = subscribe("/allViz", "std_msgs/String");
 
         Debug.Log(allVizSub);
-        Send(allVizSub);
+        RosMessenger.Instance.Send(allVizSub);
         Debug.Log(headGazeSub);
-        Send(headGazeSub);
+        RosMessenger.Instance.Send(headGazeSub);
         Debug.Log(holoRosOffset);
-        Send(holoRosOffset);
+        RosMessenger.Instance.Send(holoRosOffset);
         Debug.Log(trianglePointsPub);
-        Send(trianglePointsPub);
+        RosMessenger.Instance.Send(trianglePointsPub);
         Debug.Log(trianglePointsSub);
-        Send(trianglePointsSub);
+        RosMessenger.Instance.Send(trianglePointsSub);
         Debug.Log(mirrorSub);
-        Send(mirrorSub);
+        RosMessenger.Instance.Send(mirrorSub);
         Debug.Log(intensePixelSub);
-        Send(intensePixelSub);
+        RosMessenger.Instance.Send(intensePixelSub);
         Debug.Log(bestPlaneSub);
-        Send(bestPlaneSub);
+        RosMessenger.Instance.Send(bestPlaneSub);
         Debug.Log(userTwistSub);
-        Send(obs1pub);
+        RosMessenger.Instance.Send(obs1pub);
         Debug.Log(obs1pub);
-        Send(userTwistSub);
+        RosMessenger.Instance.Send(userTwistSub);
         Debug.Log(correctedTwistSub);
-        Send(correctedTwistSub);
+        RosMessenger.Instance.Send(correctedTwistSub);
         Debug.Log(collisionVizSub);
-        Send(collisionVizSub);
+        RosMessenger.Instance.Send(collisionVizSub);
         Debug.Log(joystickVizSub);
-        Send(joystickVizSub);
+        RosMessenger.Instance.Send(joystickVizSub);
         Debug.Log(errorMetricSub);
-        Send(errorMetricSub);
+        RosMessenger.Instance.Send(errorMetricSub);
         Debug.Log(wheelChairSub);
-        Send(wheelChairSub);
+        RosMessenger.Instance.Send(wheelChairSub);
         Debug.Log(mapPub);
-        Send(mapPub);
+        RosMessenger.Instance.Send(mapPub);
         Debug.Log(lagSub);
-        Send(lagSub);
+        RosMessenger.Instance.Send(lagSub);
         Debug.Log(holoPingAdv);
-        Send(holoPingAdv);
+        RosMessenger.Instance.Send(holoPingAdv);
         Debug.Log(pingOutSub);
-        Send(pingOutSub);
+        RosMessenger.Instance.Send(pingOutSub);
         Debug.Log(advpointClicked);
-        Send(advpointClicked);
+        RosMessenger.Instance.Send(advpointClicked);
         Debug.Log(advStr);
-        Send(advStr);
+        RosMessenger.Instance.Send(advStr);
         Debug.Log(holoWorldSub);
-        Send(holoWorldSub);
+        RosMessenger.Instance.Send(holoWorldSub);
         Debug.Log(originSub);
-        Send(originSub);
+        RosMessenger.Instance.Send(originSub);
         Debug.Log(advReCal);
-        Send(advReCal);
-        Send(speechSub);
+        RosMessenger.Instance.Send(advReCal);
+        RosMessenger.Instance.Send(speechSub);
         Debug.Log(arraySub);
-        Send(arraySub);
+        RosMessenger.Instance.Send(arraySub);
         Debug.Log(imTextSub);
-        Send(imTextSub);
+        RosMessenger.Instance.Send(imTextSub);
         Debug.Log(qual);
-        Send(qual);
+        RosMessenger.Instance.Send(qual);
         Debug.Log(nextSub);
-        Send(nextSub);
+        RosMessenger.Instance.Send(nextSub);
 
     }//Initialise
 
@@ -986,7 +796,7 @@ public class Source : Singleton<Source>
                         "}" +
                     "}" +
                 "}";
-        Send(N);
+        RosMessenger.Instance.Send(N);
 
     }//SendPose
 
@@ -1048,7 +858,7 @@ public class Source : Singleton<Source>
                         "}" +
                     "}" +
                 "}";
-        Send(N);
+        RosMessenger.Instance.Send(N);
     }//sendObs
 
     public void SendNext(string type)
@@ -1059,7 +869,7 @@ public class Source : Singleton<Source>
         try
         {
             string tosend = N.ToString();
-            Send(tosend);
+            RosMessenger.Instance.Send(tosend);
         }
         catch (System.ArgumentOutOfRangeException e)
         {
@@ -1071,7 +881,7 @@ public class Source : Singleton<Source>
     //publishes to the gaze topics, eyehead = 1 is eye gaze, =0 is head gaze.
     public void SendGaze(string obj, bool eyeHead)
     {
-        if (con)
+        if (RosMessenger.Instance.Con)
         {
             string topic;
 
@@ -1093,7 +903,7 @@ public class Source : Singleton<Source>
             {
                 string tosend = N.ToString();
                 Debug.Log(tosend);
-                Send(tosend);
+                RosMessenger.Instance.Send(tosend);
             }
             catch (System.ArgumentOutOfRangeException e)
             {
@@ -1110,7 +920,7 @@ public class Source : Singleton<Source>
                 ", \"type\": \"" + "std_msgs/Int32" + "\"" +
                 ",\"msg\":{\"data\": " + i.ToString() + "}" +
                 "}";
-        Send(N);
+        RosMessenger.Instance.Send(N);
 
     }//publishPointClicked
 
@@ -1129,7 +939,7 @@ public class Source : Singleton<Source>
         try
         {
             string tosend = N.ToString();
-            Send(tosend);
+            RosMessenger.Instance.Send(tosend);
         }
         catch (System.ArgumentOutOfRangeException e)
         {
@@ -1147,7 +957,7 @@ public class Source : Singleton<Source>
 
         try
         {
-            Send(N);
+            RosMessenger.Instance.Send(N);
         }
         catch (System.ArgumentOutOfRangeException e)
         {

@@ -20,6 +20,9 @@ public class SpeechManager : MonoBehaviour
     public GameObject sourceHandle;
     public GameObject mainCamera;
 
+    //New for soft migration
+    public GameObject rosbridge;
+
     // Use this for initialization
     void Start()
     {
@@ -114,7 +117,7 @@ public class SpeechManager : MonoBehaviour
             //sourceHandle.WantToCon = true;
             // Call the OnDrop method on just the focused object.
 
-            this.BroadcastMessage("Connect", "10.0.0.213");
+            rosbridge.SendMessage("Connect");
         });
         keywords.Add("disconnect", () =>
         {
