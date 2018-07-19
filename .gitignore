@@ -10,6 +10,12 @@ Assets/AssetStoreTools*
 Assets/HoloToolkit/
 Assets/hololens-rosbridge/
 
+Assets/HoloToolkit.meta
+Assets/WSATestCertificate.pfx.meta
+Assets/csc.rsp.meta
+Assets/mcs.rsp.meta
+
+
 # Visual Studio cache directory
 .vs/
 
