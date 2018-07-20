@@ -50,7 +50,6 @@ public class Source : Singleton<Source>
     public GameObject collisionHolder;
     public GameObject obsObj1;
     public GameObject bestPlane;
-    public GameObject mirrorPlane;
     public GameObject cube3;
     public GameObject cube2;
     public GameObject cube1;
@@ -74,9 +73,6 @@ public class Source : Singleton<Source>
     private bool pointClicked = false;
     private Vector3 cube1Pos, cube2Pos, cube3Pos;
 
-    //Value that will be send to teleport_absolute
-    public float tx, ty;
-
     //private values for wheelchair offset 
     private Quaternion initialRot;
     private Quaternion savedRot;
@@ -91,10 +87,7 @@ public class Source : Singleton<Source>
     string byteTextMirror;
     byte[] decodedBytesCollisionViz;
     byte[] decodedBytesJoystickViz;
-    byte[] decodedBytesMirror;
     Texture2D texCollisionViz;
-    Texture2D texMirror;
-    bool mirrorNeedUpdate = false;
     bool collisionVizNeedUpdate = false;
     int collisionWidth = 300;
 
@@ -111,7 +104,6 @@ public class Source : Singleton<Source>
     TimeSpan runTime;
     int mySecs = 0;
     int myNSecs = 0;
-    int frameCount = 0;
 
     public GameObject soundObj;
     soundMover sm;
@@ -120,6 +112,10 @@ public class Source : Singleton<Source>
     private triggerManager tmWheelChair;
 
     planeManager planeM;
+
+    //Still needed for migration
+    [HideInInspector]
+    public int frameCount = 0;
 
     void Update()
     {
@@ -154,15 +150,6 @@ public class Source : Singleton<Source>
             thisPos.y = wheelchairHolder.transform.position.y;
             collisionHolder.transform.position = thisPos;
             collisionHolder.transform.rotation=(wheelchairHolder.transform.rotation);
-        }
-
-        if (mirrorNeedUpdate && frameCount % 2 == 1 && byteTextMirror.Length !=0)
-        {
-            mirrorNeedUpdate = false;
-            decodedBytesMirror = Convert.FromBase64String(byteTextMirror.Substring(1, byteTextMirror.Length - 2));
-            texMirror.LoadImage(decodedBytesMirror);
-            Renderer mirrorRenderer = mirrorPlane.GetComponent<Renderer>();
-            mirrorRenderer.material.mainTexture = texMirror;
         }
 
         if (shouldSpeak)
@@ -241,7 +228,6 @@ public class Source : Singleton<Source>
     {
         startTime = DateTime.Now;
         texCollisionViz = new Texture2D(2, 2);
-        texMirror = new Texture2D(2, 2);
         gripHandle = this.GetComponent<gripManager>();
         tmHoloWorld = holoWorldObj.GetComponent<triggerManager>();
         tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
@@ -313,14 +299,6 @@ public class Source : Singleton<Source>
                 if (N["msg"]["data"].ToString().Length != 0)
                 {
 
-                }
-                break;
-
-            case "\"/mirrorText\"":
-                if (N["msg"]["data"].ToString().Length != 0)
-                {
-                    mirrorNeedUpdate = true;
-                    byteTextMirror = N["msg"]["data"].ToString();
                 }
                 break;
 
@@ -569,7 +547,6 @@ public class Source : Singleton<Source>
         string collisionVizSub = subscribe("/collisionVisText", "std_msgs/String");
         string joystickVizSub = subscribe("/joystickVisText", "std_msgs/String");
         string intensePixelSub = subscribe("/formatted_grid/intense_pixel", "hololens_experiment/IntensePixel");
-        string mirrorSub = subscribe("/mirrorText", "std_msgs/String");
         string trianglePointsSub = subscribe("/hololens_experiment/common_points", "/hololens_experiment/CommonPoints");
         string trianglePointsPub = advertise("/hololens/commonPoints", "/hololens_experiment/CommonPoints");
         string holoRosOffset = subscribe("/holoRosOffset", "geometry_msgs/Pose");
@@ -583,8 +560,6 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(trianglePointsPub);
         Debug.Log(trianglePointsSub);
         RosMessenger.Instance.Send(trianglePointsSub);
-        Debug.Log(mirrorSub);
-        RosMessenger.Instance.Send(mirrorSub);
         Debug.Log(intensePixelSub);
         RosMessenger.Instance.Send(intensePixelSub);
         Debug.Log(obs1pub);

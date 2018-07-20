@@ -3191,7 +3191,6 @@ MonoBehaviour:
   collisionHolder: {fileID: 98615268}
   obsObj1: {fileID: 1268747080}
   bestPlane: {fileID: 1910661159}
-  mirrorPlane: {fileID: 1806987953}
   cube3: {fileID: 1734816529}
   cube2: {fileID: 2070053107}
   cube1: {fileID: 17460629}
@@ -3201,10 +3200,9 @@ MonoBehaviour:
   numHelpTypes: 0
   mapTex: {fileID: 0}
   TextToSpeechObj: {fileID: 0}
-  tx: 0
-  ty: 0
   lag: 0
   soundObj: {fileID: 1502929977}
+  frameCount: 0
 --- !u!4 &1545717552
 Transform:
   m_ObjectHideFlags: 0
@@ -4216,6 +4214,7 @@ GameObject:
   - component: {fileID: 1806987957}
   - component: {fileID: 1806987956}
   - component: {fileID: 1806987955}
+  - component: {fileID: 1806987958}
   m_Layer: 0
   m_Name: rearVeiwMirror
   m_TagString: Untagged
@@ -4292,6 +4291,17 @@ MeshFilter:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1806987953}
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1806987958
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1806987953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73107dd009905d9489b4948a53aeeb87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1909781762
 GameObject:
   m_ObjectHideFlags: 0
