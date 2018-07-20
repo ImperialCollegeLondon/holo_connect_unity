@@ -1199,6 +1199,17 @@ MonoBehaviour:
   angular: 0
   linScale: 1
   angScale: 1
+--- !u!114 &353405217
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 353405214}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 629727300f9c5314d84c15e1316ac31c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &394721824
 GameObject:
   m_ObjectHideFlags: 0
@@ -1750,6 +1761,17 @@ MonoBehaviour:
   angular: 0
   linScale: 1
   angScale: 1
+--- !u!114 &850533201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 850533198}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4da6d2d3fe0c984a873ffa22a4e0e92, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &870763832
 GameObject:
   m_ObjectHideFlags: 0
@@ -2132,7 +2154,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   host: 10.0.0.213
   port: 9090
-  ActivationList: []
+  ActivationList:
+  - {fileID: 1415438025}
 --- !u!4 &1210691037
 Transform:
   m_ObjectHideFlags: 0
@@ -2609,7 +2632,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1415438026
 Transform:
   m_ObjectHideFlags: 0
@@ -3095,8 +3118,6 @@ MonoBehaviour:
   errorMaterial: {fileID: 2100000, guid: c13feb83f314e7a44afac90b8f1c15bd, type: 2}
   collisionVizPlane: {fileID: 1685892381}
   collisionHolder: {fileID: 98615268}
-  userArrow: {fileID: 850533198}
-  correctedArrow: {fileID: 353405214}
   obsObj1: {fileID: 1268747080}
   bestPlane: {fileID: 1910661159}
   mirrorPlane: {fileID: 1806987953}

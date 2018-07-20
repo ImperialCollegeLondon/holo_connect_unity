@@ -48,8 +48,6 @@ public class Source : Singleton<Source>
     public Material errorMaterial;
     public GameObject collisionVizPlane;
     public GameObject collisionHolder;
-    public GameObject userArrow;
-    public GameObject correctedArrow;
     public GameObject obsObj1;
     public GameObject bestPlane;
     public GameObject mirrorPlane;
@@ -142,8 +140,6 @@ public class Source : Singleton<Source>
         cube3Pos = cube3.transform.position;
         errorMaterial.SetFloat("_Transparency", errorMetric);
         
-        Renderer userArrowRen = userArrow.GetComponentsInChildren<Renderer>()[0];
-        Renderer correctedArrowRen = correctedArrow.GetComponentsInChildren<Renderer>()[0];
         Renderer mirrorPlaneRen = mirrorPlane.GetComponent<Renderer>();
         Renderer collisionVizPlaneRen = collisionVizPlane.GetComponent<Renderer>();
         Renderer rearViewCamPlaneOverlayRen = rearViewCamPlaneOverlay.GetComponent<Renderer>();
@@ -154,8 +150,8 @@ public class Source : Singleton<Source>
         if (allViz)
         {
 
-            userArrowRen.enabled = true;
-            correctedArrowRen.enabled = true;
+//            userArrowRen.enabled = true;
+//            correctedArrowRen.enabled = true;
             mirrorPlaneRen.enabled = true;
             collisionVizPlaneRen.enabled = true;
             rearViewCamPlaneOverlayRen.enabled = true;
@@ -166,8 +162,8 @@ public class Source : Singleton<Source>
         }
         else
         {
-            userArrowRen.enabled = false;
-            correctedArrowRen.enabled = false;
+ //           userArrowRen.enabled = false;
+ //           correctedArrowRen.enabled = false;
             mirrorPlaneRen.enabled = false;
             collisionVizPlaneRen.enabled = false;
             rearViewCamPlaneOverlayRen.enabled = false;
@@ -291,8 +287,6 @@ public class Source : Singleton<Source>
         gripHandle = this.GetComponent<gripManager>();
         tmHoloWorld = holoWorldObj.GetComponent<triggerManager>();
         tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
-        userArrowController = userArrow.GetComponent<twistArrowControler>();
-        correctedArrowController = correctedArrow.GetComponent<twistArrowControler>();
         planeM = bestPlane.GetComponent<planeManager>();
         sm = soundObj.GetComponent<soundMover>();
     }
@@ -370,17 +364,6 @@ public class Source : Singleton<Source>
                     mirrorNeedUpdate = true;
                     byteTextMirror = N["msg"]["data"].ToString();
                 }
-                break;
-
-            case "\"/navigation/main_js_cmd_vel\"":
-                userArrowController.angular = N["msg"]["angular"]["z"];
-                userArrowController.linear = N["msg"]["linear"]["x"];
-                break;
-
-            case "\"/arta/cmd_vel\"":
-                Debug.Log("gotcorrected");
-                correctedArrowController.angular = N["msg"]["angular"]["z"];
-                correctedArrowController.linear = N["msg"]["linear"]["x"];
                 break;
 
             case "\"bestPlane\"":
@@ -630,8 +613,6 @@ public class Source : Singleton<Source>
 
         string bestPlaneSub = subscribe("bestPlane", "std_msgs/Float32MultiArray");
         string obs1pub = advertise("/obs1", "geometry_msgs/PoseStamped");
-        string userTwistSub = subscribe("/navigation/main_js_cmd_vel", "geometry_msgs/Twist");
-        string correctedTwistSub = subscribe("/arta/cmd_vel", "geometry_msgs/Twist");
         string lagSub = subscribe("/lagOut", "std_msgs/Float32");
         string errorMetricSub = subscribe("/errorMetric", "std_msgs/Float32");
         string holoPingAdv = advertise("/holoPing", "std_msgs/Time");
@@ -674,12 +655,8 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(intensePixelSub);
         Debug.Log(bestPlaneSub);
         RosMessenger.Instance.Send(bestPlaneSub);
-        Debug.Log(userTwistSub);
-        RosMessenger.Instance.Send(obs1pub);
         Debug.Log(obs1pub);
-        RosMessenger.Instance.Send(userTwistSub);
-        Debug.Log(correctedTwistSub);
-        RosMessenger.Instance.Send(correctedTwistSub);
+        RosMessenger.Instance.Send(obs1pub);
         Debug.Log(collisionVizSub);
         RosMessenger.Instance.Send(collisionVizSub);
         Debug.Log(joystickVizSub);

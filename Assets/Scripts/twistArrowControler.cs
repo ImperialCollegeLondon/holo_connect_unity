@@ -18,7 +18,7 @@ public class twistArrowControler : MonoBehaviour {
         float magnitude =Mathf.Sqrt( Mathf.Pow(linear * linScale, 2) + Mathf.Pow(angular * angScale, 2));
         float angle = Mathf.Atan2(angular * angScale, linear * linScale);
         transform.localScale = new Vector3(magnitude,1,1);
-        transform.localRotation = Quaternion.Euler(0,angle,0);
+        transform.localRotation = Quaternion.EulerAngles(0,angle,0);
 
     }
 }
