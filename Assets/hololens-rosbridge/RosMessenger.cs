@@ -210,7 +210,7 @@ public class RosMessenger : HoloToolkit.Unity.Singleton<RosMessenger>
 
         //con = true;
 
-        //Socket.OnMessage +=Editor_MessageRecieved;
+        Socket.OnMessage +=Editor_MessageRecieved;
         while (true)
         {
             Thread.Sleep(10000);

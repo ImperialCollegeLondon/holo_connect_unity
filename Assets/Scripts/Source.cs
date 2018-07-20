@@ -113,18 +113,8 @@ public class Source : Singleton<Source>
     int myNSecs = 0;
     int frameCount = 0;
 
-    twistArrowControler userArrowController;
-    twistArrowControler correctedArrowController;
-
-    float planeA;
-    float planeB;
-    float planeC;
-    float planeD;
-
     public GameObject soundObj;
     soundMover sm;
-
-    bool allViz = true;
 
     private triggerManager tmHoloWorld;
     private triggerManager tmWheelChair;
@@ -139,38 +129,6 @@ public class Source : Singleton<Source>
         cube2Pos = cube2.transform.position;
         cube3Pos = cube3.transform.position;
         errorMaterial.SetFloat("_Transparency", errorMetric);
-        
-        Renderer mirrorPlaneRen = mirrorPlane.GetComponent<Renderer>();
-        Renderer collisionVizPlaneRen = collisionVizPlane.GetComponent<Renderer>();
-        Renderer rearViewCamPlaneOverlayRen = rearViewCamPlaneOverlay.GetComponent<Renderer>();
-        Renderer cube1Ren = cube1.GetComponent<Renderer>();
-        Renderer cube2Ren = cube2.GetComponent<Renderer>();
-        Renderer cube3Ren = cube3.GetComponent<Renderer>();
-
-        if (allViz)
-        {
-
-//            userArrowRen.enabled = true;
-//            correctedArrowRen.enabled = true;
-            mirrorPlaneRen.enabled = true;
-            collisionVizPlaneRen.enabled = true;
-            rearViewCamPlaneOverlayRen.enabled = true;
-            cube1Ren.enabled = true;
-            cube2Ren.enabled = true;
-            cube3Ren.enabled = true;
-
-        }
-        else
-        {
- //           userArrowRen.enabled = false;
- //           correctedArrowRen.enabled = false;
-            mirrorPlaneRen.enabled = false;
-            collisionVizPlaneRen.enabled = false;
-            rearViewCamPlaneOverlayRen.enabled = false;
-            cube1Ren.enabled = false;
-            cube2Ren.enabled = false;
-            cube3Ren.enabled = false;
-        }
 
         if (firstChair && !savedRot.Equals(new Quaternion(0, 0, 0, 0)))
         {
@@ -366,15 +324,6 @@ public class Source : Singleton<Source>
                 }
                 break;
 
-            case "\"bestPlane\"":
-                Debug.Log("got best plane");
-                planeM.A = N["msg"]["data"][0];
-                planeM.B = N["msg"]["data"][1];
-                planeM.C = N["msg"]["data"][2];
-                planeM.D = N["msg"]["data"][3];
-                Debug.Log(planeA.ToString() + " " + planeB.ToString() + " " + planeC.ToString() + " " + planeD.ToString());
-                break;
-
             case "\"/formatted_grid/intense_pixel\"":
                 Debug.Log("got brightest pixel location");
                 sm.x = N["msg"]["x"];
@@ -395,17 +344,6 @@ public class Source : Singleton<Source>
                 tmHoloWorld.moveToPos = swappedPos;
                 tmHoloWorld.moveToPos.y = cube1Pos.y;
                 tmHoloWorld.moveToRot = (swappedQuaternion);
-                break;
-
-            case "\"/allViz\"":
-                if (N["msg"]["data"].ToString().Contains("true"))
-                {
-                    allViz = true;
-                }
-                else
-                {
-                    allViz = false;
-                }
                 break;
 
             case "fail":
@@ -611,7 +549,6 @@ public class Source : Singleton<Source>
     {
         isInit = true;
 
-        string bestPlaneSub = subscribe("bestPlane", "std_msgs/Float32MultiArray");
         string obs1pub = advertise("/obs1", "geometry_msgs/PoseStamped");
         string lagSub = subscribe("/lagOut", "std_msgs/Float32");
         string errorMetricSub = subscribe("/errorMetric", "std_msgs/Float32");
@@ -637,10 +574,7 @@ public class Source : Singleton<Source>
         string trianglePointsPub = advertise("/hololens/commonPoints", "/hololens_experiment/CommonPoints");
         string holoRosOffset = subscribe("/holoRosOffset", "geometry_msgs/Pose");
         string headGazeSub = advertise("/headGaze", "std_msgs/String");  
-        string allVizSub = subscribe("/allViz", "std_msgs/String");
 
-        Debug.Log(allVizSub);
-        RosMessenger.Instance.Send(allVizSub);
         Debug.Log(headGazeSub);
         RosMessenger.Instance.Send(headGazeSub);
         Debug.Log(holoRosOffset);
@@ -653,8 +587,6 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(mirrorSub);
         Debug.Log(intensePixelSub);
         RosMessenger.Instance.Send(intensePixelSub);
-        Debug.Log(bestPlaneSub);
-        RosMessenger.Instance.Send(bestPlaneSub);
         Debug.Log(obs1pub);
         RosMessenger.Instance.Send(obs1pub);
         Debug.Log(collisionVizSub);
