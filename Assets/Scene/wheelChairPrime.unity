@@ -3187,10 +3187,7 @@ MonoBehaviour:
   holoLens: {fileID: 10350620}
   wheelchairHolder: {fileID: 588279545}
   errorMaterial: {fileID: 2100000, guid: c13feb83f314e7a44afac90b8f1c15bd, type: 2}
-  collisionVizPlane: {fileID: 1685892381}
-  collisionHolder: {fileID: 98615268}
   obsObj1: {fileID: 1268747080}
-  bestPlane: {fileID: 1910661159}
   cube3: {fileID: 1734816529}
   cube2: {fileID: 2070053107}
   cube1: {fileID: 17460629}
@@ -3203,6 +3200,7 @@ MonoBehaviour:
   lag: 0
   soundObj: {fileID: 1502929977}
   frameCount: 0
+  collisionWidth: 300
 --- !u!4 &1545717552
 Transform:
   m_ObjectHideFlags: 0
@@ -3490,6 +3488,7 @@ GameObject:
   - component: {fileID: 1685892385}
   - component: {fileID: 1685892384}
   - component: {fileID: 1685892383}
+  - component: {fileID: 1685892386}
   m_Layer: 0
   m_Name: collisionViz
   m_TagString: Untagged
@@ -3567,6 +3566,19 @@ MeshFilter:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1685892381}
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1685892386
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1685892381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8cebb23a90b8dee4c87147229759b57f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  wheelchairHolder: {fileID: 588279545}
+  collisionHolder: {fileID: 98615268}
 --- !u!1 &1698925867
 GameObject:
   m_ObjectHideFlags: 0

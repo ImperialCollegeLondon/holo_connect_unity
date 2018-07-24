@@ -46,10 +46,7 @@ public class Source : Singleton<Source>
     public GameObject holoLens;
     public GameObject wheelchairHolder;
     public Material errorMaterial;
-    public GameObject collisionVizPlane;
-    public GameObject collisionHolder;
     public GameObject obsObj1;
-    public GameObject bestPlane;
     public GameObject cube3;
     public GameObject cube2;
     public GameObject cube1;
@@ -82,14 +79,6 @@ public class Source : Singleton<Source>
 
     string byteText;
     string byteTextMap;
-    string byteTextJoystickViz;
-    string byteTextCollisionViz;
-    string byteTextMirror;
-    byte[] decodedBytesCollisionViz;
-    byte[] decodedBytesJoystickViz;
-    Texture2D texCollisionViz;
-    bool collisionVizNeedUpdate = false;
-    int collisionWidth = 300;
 
     //variables for clock sync 
     int rosSecs = 0;
@@ -111,11 +100,9 @@ public class Source : Singleton<Source>
     private triggerManager tmHoloWorld;
     private triggerManager tmWheelChair;
 
-    planeManager planeM;
-
     //Still needed for migration
     [HideInInspector]
-    public int frameCount = 0;
+    public int frameCount = 0, collisionWidth = 300;
 
     void Update()
     {
@@ -136,20 +123,6 @@ public class Source : Singleton<Source>
             outVect.y = 0;
             Vector2 inVect2;
             inVect2.x = inVect.x;
-        }
-
-        if (collisionVizNeedUpdate && frameCount % 2 == 1)
-        {
-            collisionVizNeedUpdate = false;
-            decodedBytesCollisionViz = Convert.FromBase64String(byteTextCollisionViz.Substring(1, byteTextCollisionViz.Length - 2));
-            texCollisionViz.LoadImage(decodedBytesCollisionViz);
-            Renderer collisionRenderer = collisionVizPlane.GetComponent<Renderer>();
-            collisionWidth = texCollisionViz.width;
-            collisionRenderer.material.mainTexture = texCollisionViz;
-            Vector3 thisPos = wheelchairHolder.transform.position;
-            thisPos.y = wheelchairHolder.transform.position.y;
-            collisionHolder.transform.position = thisPos;
-            collisionHolder.transform.rotation=(wheelchairHolder.transform.rotation);
         }
 
         if (shouldSpeak)
@@ -227,11 +200,9 @@ public class Source : Singleton<Source>
     public void Start()
     {
         startTime = DateTime.Now;
-        texCollisionViz = new Texture2D(2, 2);
         gripHandle = this.GetComponent<gripManager>();
         tmHoloWorld = holoWorldObj.GetComponent<triggerManager>();
         tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
-        planeM = bestPlane.GetComponent<planeManager>();
         sm = soundObj.GetComponent<soundMover>();
     }
 
@@ -284,22 +255,6 @@ public class Source : Singleton<Source>
 
             case "\"/lagOut\"":
                 getLag(inString);
-                break;
-
-            case "\"/collisionVisText\"":
-                if (N["msg"]["data"].ToString().Length != 0)
-                {
-                    Debug.Log("got colision Image");
-                    collisionVizNeedUpdate = true;
-                    byteTextCollisionViz = N["msg"]["data"].ToString();
-                }
-                break;
-
-            case "\"/joystickVisText\"":
-                if (N["msg"]["data"].ToString().Length != 0)
-                {
-
-                }
                 break;
 
             case "\"/formatted_grid/intense_pixel\"":
@@ -544,8 +499,6 @@ public class Source : Singleton<Source>
         string arraySub = subscribe("/cameraPosArr", "geometry_msgs/PoseArray");
         string nextSub = advertise("/holoNext", "std_msgs/String");
         string mapPub = advertise("/mapRaw", "std_msgs/String");
-        string collisionVizSub = subscribe("/collisionVisText", "std_msgs/String");
-        string joystickVizSub = subscribe("/joystickVisText", "std_msgs/String");
         string intensePixelSub = subscribe("/formatted_grid/intense_pixel", "hololens_experiment/IntensePixel");
         string trianglePointsSub = subscribe("/hololens_experiment/common_points", "/hololens_experiment/CommonPoints");
         string trianglePointsPub = advertise("/hololens/commonPoints", "/hololens_experiment/CommonPoints");
@@ -564,10 +517,6 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(intensePixelSub);
         Debug.Log(obs1pub);
         RosMessenger.Instance.Send(obs1pub);
-        Debug.Log(collisionVizSub);
-        RosMessenger.Instance.Send(collisionVizSub);
-        Debug.Log(joystickVizSub);
-        RosMessenger.Instance.Send(joystickVizSub);
         Debug.Log(errorMetricSub);
         RosMessenger.Instance.Send(errorMetricSub);
         Debug.Log(wheelChairSub);

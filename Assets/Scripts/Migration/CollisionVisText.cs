@@ -3,25 +3,29 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MirrorText : RosComponent {
+public class CollisionVisText : RosComponent {
+
+    public GameObject wheelchairHolder;
+    public GameObject collisionHolder;
 
     RosSubscriber<ros.std_msgs.String> sub;
 
     private const String valuemap = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    Renderer mirrorRenderer;
+    Vector3 thisPos;
+
+    Renderer collisionRenderer;
 
     // Use this for initialization
     void Start () {
 
-        Subscribe("mirrorSub", "/mirrorText", 5, out sub);
+        Subscribe("collisionVizSub", "/collisionVisText", 5, out sub);
 
-        mirrorRenderer = GetComponent<Renderer>();
+        collisionRenderer = GetComponent<Renderer>();
     }
 
     // Update is called once per frame
-    void Update()
-    {
+    void Update () {
 
         ros.std_msgs.String msg;
 
@@ -34,7 +38,15 @@ public class MirrorText : RosComponent {
 
                 Texture2D tex = new Texture2D(2, 2);
                 tex.LoadImage(image);
-                mirrorRenderer.material.mainTexture = tex;
+
+                Source.Instance.collisionWidth = tex.width;
+                collisionRenderer.material.mainTexture = tex;
+
+                thisPos = wheelchairHolder.transform.position;
+                thisPos.y = wheelchairHolder.transform.position.y;
+
+                collisionHolder.transform.position = thisPos;
+                collisionHolder.transform.rotation = (wheelchairHolder.transform.rotation);
             }
         }
     }
@@ -65,3 +77,4 @@ public class MirrorText : RosComponent {
         return buff.ToArray();
     }
 }
+
