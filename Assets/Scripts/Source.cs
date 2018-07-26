@@ -45,17 +45,10 @@ public class Source : Singleton<Source>
     public GameObject wheelChairObj;
     public GameObject holoLens;
     public GameObject wheelchairHolder;
-    public Material errorMaterial;
     public GameObject obsObj1;
-    public GameObject cube3;
-    public GameObject cube2;
-    public GameObject cube1;
     public Camera mainCam;
-    public GameObject rearViewCamPlaneOverlay;
     public int helpType;
     public int numHelpTypes;
-
-    public RenderTexture mapTex;
 
     private gripManager gripHandle;
 
@@ -68,17 +61,12 @@ public class Source : Singleton<Source>
     private bool isPoints = false;
     private int curPoint = 0;
     private bool pointClicked = false;
-    private Vector3 cube1Pos, cube2Pos, cube3Pos;
 
     //private values for wheelchair offset 
     private Quaternion initialRot;
     private Quaternion savedRot;
     private Vector3 savedPos;
     private bool firstChair = true;
-    private float errorMetric = 0;
-
-    string byteText;
-    string byteTextMap;
 
     //variables for clock sync 
     int rosSecs = 0;
@@ -104,14 +92,14 @@ public class Source : Singleton<Source>
     [HideInInspector]
     public int frameCount = 0, collisionWidth = 300;
 
+    Vector3 Cube1Pos;
+
     void Update()
     {
         name = getObject(holoLens.transform.position, holoLens.transform.position + holoLens.transform.forward);
         Debug.Log(name);
-        cube1Pos = cube1.transform.position;
-        cube2Pos = cube2.transform.position;
-        cube3Pos = cube3.transform.position;
-        errorMaterial.SetFloat("_Transparency", errorMetric);
+
+        Cube1Pos = Cube1.Instance.transform.position;
 
         if (firstChair && !savedRot.Equals(new Quaternion(0, 0, 0, 0)))
         {
@@ -155,16 +143,6 @@ public class Source : Singleton<Source>
         if (Input.GetKeyDown(KeyCode.E))
         {
             RosMessenger.Instance.Disconnect();
-        }
-
-        if (Input.GetKeyDown(KeyCode.H))
-        {
-            sendQual(true);
-        }
-
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            sendQual(false);
         }
 
         if (Input.GetKeyDown(KeyCode.N))
@@ -223,10 +201,6 @@ public class Source : Singleton<Source>
                 tmHoloWorld.moveToRot = rot;
                 break;
 
-            case "\"/errorMetric\"":
-                errorMetric = N["msg"]["data"];
-                break;
-
             case "\"/wheelChairPose\"":
                 savedPos = pos;
                 pos.y = 0;
@@ -265,17 +239,12 @@ public class Source : Singleton<Source>
                 sm.intensity = N["msg"]["intensity"];
                 break;
 
-            case "\"/hololens_experiment/common_points\"":
-                Debug.Log("got triangle");
-                publishTriangle(cube1Pos, cube2Pos, cube3Pos, inString);
-                break;
-
             case "\"/holoRosOffset\"":
                 Debug.Log("got hololens/ros offset");
                 Vector3 swappedPos = new Vector3(pos.x, pos.y, pos.z);
                 Quaternion swappedQuaternion = new Quaternion(rot.x, rot.y, rot.z, rot.w);
                 tmHoloWorld.moveToPos = swappedPos;
-                tmHoloWorld.moveToPos.y = cube1Pos.y;
+                tmHoloWorld.moveToPos.y = Cube1Pos.y;
                 tmHoloWorld.moveToRot = (swappedQuaternion);
                 break;
 
@@ -287,24 +256,6 @@ public class Source : Singleton<Source>
                 break;
         }
     }
-
-    private void publishTriangle(Vector3 p1, Vector3 p2, Vector3 p3, string inString)
-    {
-        var N = JSON.Parse(inString); // to get data from the request. 
-        N["msg"]["frame_id"] = "hololens";
-        N["topic"] = "/hololens/commonPoints";
-        N["msg"]["p1"]["x"] = p1.x;
-        N["msg"]["p1"]["y"] = 0.0f;
-        N["msg"]["p1"]["z"] = p1.z;
-        N["msg"]["p2"]["x"] = p2.x;
-        N["msg"]["p2"]["y"] = 0.0f;
-        N["msg"]["p2"]["z"] = p2.z;
-        N["msg"]["p3"]["x"] = p3.x;
-        N["msg"]["p3"]["y"] = 0.0f;
-        N["msg"]["p3"]["z"] = p3.z;
-        Debug.Log(N.ToString());
-        RosMessenger.Instance.Send(N.ToString());
-    }//publishTriangle
 
     private void calcBaseTime()
     {
@@ -449,18 +400,6 @@ public class Source : Singleton<Source>
         }
     }
 
-    public void highQual()
-    {
-        speak("High quality");
-        sendQual(true);
-    }
-
-    public void lowQual()
-    {
-        speak("Low quality");
-        sendQual(false);
-    }
-
     public void clear()
     {
         speak("clear");
@@ -484,24 +423,19 @@ public class Source : Singleton<Source>
 
         string obs1pub = advertise("/obs1", "geometry_msgs/PoseStamped");
         string lagSub = subscribe("/lagOut", "std_msgs/Float32");
-        string errorMetricSub = subscribe("/errorMetric", "std_msgs/Float32");
         string holoPingAdv = advertise("/holoPing", "std_msgs/Time");
         string pingOutSub = subscribe("/pingOut", "std_msgs/Time");
         string advStr = advertise("/holoPose", "geometry_msgs/PoseStamped");
         string advReCal = advertise("/reCalibrate", "std_msgs/String");
-        string qual = advertise("/qual", "std_msgs/String");
         string advpointClicked = advertise("/pointClicked", "std_msgs/Int32");
         string originSub = subscribe("/origin", "geometry_msgs/Pose");
         string holoWorldSub = subscribe("/holoWorld", "geometry_msgs/Pose");
         string wheelChairSub = subscribe("/wheelChairPose", "geometry_msgs/Pose");
         string speechSub = subscribe("/speech", "std_msgs/String");
-        string imTextSub = subscribe("/imText", "std_msgs/String");
         string arraySub = subscribe("/cameraPosArr", "geometry_msgs/PoseArray");
         string nextSub = advertise("/holoNext", "std_msgs/String");
         string mapPub = advertise("/mapRaw", "std_msgs/String");
         string intensePixelSub = subscribe("/formatted_grid/intense_pixel", "hololens_experiment/IntensePixel");
-        string trianglePointsSub = subscribe("/hololens_experiment/common_points", "/hololens_experiment/CommonPoints");
-        string trianglePointsPub = advertise("/hololens/commonPoints", "/hololens_experiment/CommonPoints");
         string holoRosOffset = subscribe("/holoRosOffset", "geometry_msgs/Pose");
         string headGazeSub = advertise("/headGaze", "std_msgs/String");  
 
@@ -509,16 +443,10 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(headGazeSub);
         Debug.Log(holoRosOffset);
         RosMessenger.Instance.Send(holoRosOffset);
-        Debug.Log(trianglePointsPub);
-        RosMessenger.Instance.Send(trianglePointsPub);
-        Debug.Log(trianglePointsSub);
-        RosMessenger.Instance.Send(trianglePointsSub);
         Debug.Log(intensePixelSub);
         RosMessenger.Instance.Send(intensePixelSub);
         Debug.Log(obs1pub);
         RosMessenger.Instance.Send(obs1pub);
-        Debug.Log(errorMetricSub);
-        RosMessenger.Instance.Send(errorMetricSub);
         Debug.Log(wheelChairSub);
         RosMessenger.Instance.Send(wheelChairSub);
         Debug.Log(mapPub);
@@ -542,10 +470,6 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(speechSub);
         Debug.Log(arraySub);
         RosMessenger.Instance.Send(arraySub);
-        Debug.Log(imTextSub);
-        RosMessenger.Instance.Send(imTextSub);
-        Debug.Log(qual);
-        RosMessenger.Instance.Send(qual);
         Debug.Log(nextSub);
         RosMessenger.Instance.Send(nextSub);
 
@@ -756,47 +680,5 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(N);
 
     }//publishPointClicked
-
-    public void sendQual(bool highLow)
-    {
-        var N = JSON.Parse("{\"op\": \"publish\", \"topic\": \"" + "\"/qual\"" + "\",\"type\": \"" + "std_msgs/String" + "\"}");
-        if (highLow)
-        {
-            N["msg"]["data"] = "high";
-        }
-        else
-        {
-            N["msg"]["data"] = "low";
-        }
-        // Debug.Log(N.ToString());
-        try
-        {
-            string tosend = N.ToString();
-            RosMessenger.Instance.Send(tosend);
-        }
-        catch (System.ArgumentOutOfRangeException e)
-        {
-            return;
-        }
-    }//sendQual
-
-    public void sendMapRaw(string image)
-    {
-        string N = "{ \"op\": \"publish\"" +
-        ", \"topic\": \"" + "/mapRaw" + "\"" +
-        ", \"type\": \"" + "std_msgs/String" + "\"" +
-        ", \"msg\":{\"data\": \"" + image + "\"}" +
-        "}";
-
-        try
-        {
-            RosMessenger.Instance.Send(N);
-        }
-        catch (System.ArgumentOutOfRangeException e)
-        {
-            return;
-        }
-
-    }//sendMapRaw
 
 }//Source
