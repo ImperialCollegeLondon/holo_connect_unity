@@ -41,10 +41,10 @@ using System.Threading.Tasks;
 public class Source : Singleton<Source>
 {
     public GameObject originObj;
-    public GameObject holoWorldObj;
+
     public GameObject wheelChairObj;
     public GameObject holoLens;
-    public GameObject wheelchairHolder;
+
     public GameObject obsObj1;
     public Camera mainCam;
     public int helpType;
@@ -64,9 +64,6 @@ public class Source : Singleton<Source>
 
     //private values for wheelchair offset 
     private Quaternion initialRot;
-    private Quaternion savedRot;
-    private Vector3 savedPos;
-    private bool firstChair = true;
 
     //variables for clock sync 
     int rosSecs = 0;
@@ -85,9 +82,6 @@ public class Source : Singleton<Source>
     public GameObject soundObj;
     soundMover sm;
 
-    private triggerManager tmHoloWorld;
-    private triggerManager tmWheelChair;
-
     //Still needed for migration
     [HideInInspector]
     public int frameCount = 0, collisionWidth = 300;
@@ -98,20 +92,6 @@ public class Source : Singleton<Source>
     {
         name = getObject(holoLens.transform.position, holoLens.transform.position + holoLens.transform.forward);
         Debug.Log(name);
-
-        Cube1Pos = Cube1.Instance.transform.position;
-
-        if (firstChair && !savedRot.Equals(new Quaternion(0, 0, 0, 0)))
-        {
-            firstChair = false;
-            initialRot = holoLens.transform.rotation;
-            //change the initial rot to be the closest rotation with only a Y component. 
-            Vector3 inVect = new Vector3(1, 0, 0);
-            Vector3 outVect = inVect.RotateAround(new Vector3(0, 0, 0), initialRot);
-            outVect.y = 0;
-            Vector2 inVect2;
-            inVect2.x = inVect.x;
-        }
 
         if (shouldSpeak)
         {
@@ -179,8 +159,8 @@ public class Source : Singleton<Source>
     {
         startTime = DateTime.Now;
         gripHandle = this.GetComponent<gripManager>();
-        tmHoloWorld = holoWorldObj.GetComponent<triggerManager>();
-        tmWheelChair = wheelchairHolder.GetComponent<triggerManager>();
+
+
         sm = soundObj.GetComponent<soundMover>();
     }
 
@@ -189,26 +169,11 @@ public class Source : Singleton<Source>
     public void parseMessage(string inString)
     {
         var N = JSON.Parse(inString);
-        Vector3 pos;
-        Quaternion rot;
         string ourTopic;
-        getMove(out ourTopic, inString, out pos, out rot);
+        getMove(out ourTopic, inString);
 
         switch (ourTopic)
         {
-            case "\"/holoWorld\"":
-                tmHoloWorld.moveToPos = pos;
-                tmHoloWorld.moveToRot = rot;
-                break;
-
-            case "\"/wheelChairPose\"":
-                savedPos = pos;
-                pos.y = 0;
-                savedRot = rot; //have to save them so that they can be accessed in update, where I am allowed to access to the other transforms.
-                tmWheelChair.moveToPos = pos;
-                tmWheelChair.moveToRot = rot;
-                break;
-
             case "\"/speech\"":
                 speakMsg(inString);
                 break;
@@ -237,15 +202,6 @@ public class Source : Singleton<Source>
                 sm.y = N["msg"]["y"];
                 sm.width = collisionWidth;
                 sm.intensity = N["msg"]["intensity"];
-                break;
-
-            case "\"/holoRosOffset\"":
-                Debug.Log("got hololens/ros offset");
-                Vector3 swappedPos = new Vector3(pos.x, pos.y, pos.z);
-                Quaternion swappedQuaternion = new Quaternion(rot.x, rot.y, rot.z, rot.w);
-                tmHoloWorld.moveToPos = swappedPos;
-                tmHoloWorld.moveToPos.y = Cube1Pos.y;
-                tmHoloWorld.moveToRot = (swappedQuaternion);
                 break;
 
             case "fail":
@@ -342,45 +298,19 @@ public class Source : Singleton<Source>
         shouldSpeak = true;
     }
 
-    private void getMove(out string topic, string inString, out Vector3 pos, out Quaternion quat)
+    private void getMove(out string topic, string inString)
     {
         //being careful with the string, could contain garbage
         try
         {
             var N = JSON.Parse(inString);
-            topic = N["topic"].ToString();
-            pos.x = N["msg"]["position"]["x"].AsFloat;
-            pos.y = N["msg"]["position"]["y"].AsFloat;
-            pos.z = N["msg"]["position"]["z"].AsFloat;
-            quat.x = N["msg"]["orientation"]["x"].AsFloat;
-            quat.y = N["msg"]["orientation"]["y"].AsFloat;
-            quat.z = N["msg"]["orientation"]["z"].AsFloat;
-            quat.w = N["msg"]["orientation"]["w"].AsFloat;
+            topic = N["topic"].ToString();         
         }
         catch (System.ArgumentOutOfRangeException e)
         {
             topic = "fail";
-            pos.x = 0;
-            pos.y = 0;
-            pos.z = 0;
-            quat.x = 0;
-            quat.y = 0;
-            quat.z = 0;
-            quat.w = 1;
             return;
         }
-
-        if (float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z) || float.IsNaN(quat.x) || float.IsNaN(quat.y) || float.IsNaN(quat.z) || float.IsNaN(quat.w))
-        {
-            pos.Set(0, 0, 0);
-            quat.Set(0, 0, 0, 1);
-        }
-
-        float mag = Mathf.Sqrt(Mathf.Pow(quat.x, 2) + Mathf.Pow(quat.y, 2) + Mathf.Pow(quat.z, 2) + Mathf.Pow(quat.w, 2));
-        quat.x = quat.x / mag;
-        quat.y = quat.y / mag;
-        quat.z = quat.z / mag;
-        quat.w = quat.w / mag;
 
     }//getMove
 
@@ -429,26 +359,19 @@ public class Source : Singleton<Source>
         string advReCal = advertise("/reCalibrate", "std_msgs/String");
         string advpointClicked = advertise("/pointClicked", "std_msgs/Int32");
         string originSub = subscribe("/origin", "geometry_msgs/Pose");
-        string holoWorldSub = subscribe("/holoWorld", "geometry_msgs/Pose");
-        string wheelChairSub = subscribe("/wheelChairPose", "geometry_msgs/Pose");
         string speechSub = subscribe("/speech", "std_msgs/String");
         string arraySub = subscribe("/cameraPosArr", "geometry_msgs/PoseArray");
         string nextSub = advertise("/holoNext", "std_msgs/String");
         string mapPub = advertise("/mapRaw", "std_msgs/String");
         string intensePixelSub = subscribe("/formatted_grid/intense_pixel", "hololens_experiment/IntensePixel");
-        string holoRosOffset = subscribe("/holoRosOffset", "geometry_msgs/Pose");
         string headGazeSub = advertise("/headGaze", "std_msgs/String");  
 
         Debug.Log(headGazeSub);
         RosMessenger.Instance.Send(headGazeSub);
-        Debug.Log(holoRosOffset);
-        RosMessenger.Instance.Send(holoRosOffset);
         Debug.Log(intensePixelSub);
         RosMessenger.Instance.Send(intensePixelSub);
         Debug.Log(obs1pub);
         RosMessenger.Instance.Send(obs1pub);
-        Debug.Log(wheelChairSub);
-        RosMessenger.Instance.Send(wheelChairSub);
         Debug.Log(mapPub);
         RosMessenger.Instance.Send(mapPub);
         Debug.Log(lagSub);
@@ -461,8 +384,6 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(advpointClicked);
         Debug.Log(advStr);
         RosMessenger.Instance.Send(advStr);
-        Debug.Log(holoWorldSub);
-        RosMessenger.Instance.Send(holoWorldSub);
         Debug.Log(originSub);
         RosMessenger.Instance.Send(originSub);
         Debug.Log(advReCal);
