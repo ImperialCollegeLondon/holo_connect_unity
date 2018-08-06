@@ -40,19 +40,11 @@ using System.Threading.Tasks;
 
 public class Source : Singleton<Source>
 {
-    public GameObject originObj;
-
     public GameObject wheelChairObj;
     public GameObject holoLens;
 
     public GameObject obsObj1;
-    public Camera mainCam;
-    public int helpType;
-    public int numHelpTypes;
 
-    private gripManager gripHandle;
-
-    public TextToSpeech TextToSpeechObj;
     private bool shouldSpeak = false;
     private string speechText = "Write a string to me before playing";
 
@@ -62,13 +54,11 @@ public class Source : Singleton<Source>
     private int curPoint = 0;
     private bool pointClicked = false;
 
-    //private values for wheelchair offset 
-    private Quaternion initialRot;
-
     //variables for clock sync 
     int rosSecs = 0;
     int rosNSecs = 0;
 
+    [HideInInspector]
     public float lag = 0;
 
     double startSecsFilt = 0;
@@ -86,18 +76,14 @@ public class Source : Singleton<Source>
     [HideInInspector]
     public int frameCount = 0, collisionWidth = 300;
 
-    Vector3 Cube1Pos;
-
     void Update()
     {
         name = getObject(holoLens.transform.position, holoLens.transform.position + holoLens.transform.forward);
-        Debug.Log(name);
 
         if (shouldSpeak)
         {
             shouldSpeak = false;
-            var textToSpeechObj = this.GetComponent<TextToSpeech>();
-            TextToSpeechObj.StartSpeaking(speechText);   
+            GetComponent<TextToSpeech>().StartSpeaking(speechText);   
         }
 
         if (isPoints && pointClicked)
@@ -146,7 +132,6 @@ public class Source : Singleton<Source>
             if (isInit && !RosMessenger.Instance.busy)
             {
                 name = getObject(holoLens.transform.position, holoLens.transform.position + holoLens.transform.forward);
-                Debug.Log(name);
                 SendGaze(name, false);
                 SendPose();
                 if (frameCount % 4 == 0) sendObs(obsObj1, "/obs1");
@@ -158,8 +143,6 @@ public class Source : Singleton<Source>
     public void Start()
     {
         startTime = DateTime.Now;
-        gripHandle = this.GetComponent<gripManager>();
-
 
         sm = soundObj.GetComponent<soundMover>();
     }
@@ -174,10 +157,6 @@ public class Source : Singleton<Source>
 
         switch (ourTopic)
         {
-            case "\"/speech\"":
-                speakMsg(inString);
-                break;
-
             case "\"/pingOut\"":
                 parseTime(inString);
                 currTime = DateTime.Now;
@@ -285,19 +264,6 @@ public class Source : Singleton<Source>
         return ret;
     }
 
-    private void speakMsg(string inString)
-    {
-        var N = JSON.Parse(inString);
-        string toSay = N["msg"]["data"].ToString();
-        speak(toSay);
-    }
-
-    public void speak(string toSay)
-    {
-        speechText = toSay;
-        shouldSpeak = true;
-    }
-
     private void getMove(out string topic, string inString)
     {
         //being careful with the string, could contain garbage
@@ -316,13 +282,13 @@ public class Source : Singleton<Source>
 
     public void startPoints()
     {
-        speak("started markers");
+        GetComponent<Speech>().speak("started markers");
         isPoints = true;
     }
 
     public void click()
     {
-        speak("click");
+        GetComponent<Speech>().speak("started markers");
         SendNext("wandNext");
         if (isPoints)
         {
@@ -332,7 +298,7 @@ public class Source : Singleton<Source>
 
     public void clear()
     {
-        speak("clear");
+        GetComponent<Speech>().speak("started markers");
         SendNext("clear");
     }
 
@@ -359,7 +325,6 @@ public class Source : Singleton<Source>
         string advReCal = advertise("/reCalibrate", "std_msgs/String");
         string advpointClicked = advertise("/pointClicked", "std_msgs/Int32");
         string originSub = subscribe("/origin", "geometry_msgs/Pose");
-        string speechSub = subscribe("/speech", "std_msgs/String");
         string arraySub = subscribe("/cameraPosArr", "geometry_msgs/PoseArray");
         string nextSub = advertise("/holoNext", "std_msgs/String");
         string mapPub = advertise("/mapRaw", "std_msgs/String");
@@ -388,7 +353,6 @@ public class Source : Singleton<Source>
         RosMessenger.Instance.Send(originSub);
         Debug.Log(advReCal);
         RosMessenger.Instance.Send(advReCal);
-        RosMessenger.Instance.Send(speechSub);
         Debug.Log(arraySub);
         RosMessenger.Instance.Send(arraySub);
         Debug.Log(nextSub);
