@@ -6,6 +6,8 @@
 [Aa]pp/
 [Pp]ackages/
 [Uu]WP/
+
+# Remove plugin stuff
 Assets/AssetStoreTools*
 Assets/HoloToolkit/
 
@@ -13,7 +15,7 @@ Assets/HoloToolkit.meta
 Assets/WSATestCertificate.pfx.meta
 Assets/csc.rsp.meta
 Assets/mcs.rsp.meta
-
+Assets/pupil_plugin/
 
 # Visual Studio cache directory
 .vs/
