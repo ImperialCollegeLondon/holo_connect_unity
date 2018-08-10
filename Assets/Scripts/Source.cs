@@ -280,34 +280,6 @@ public class Source : Singleton<Source>
 
     }//getMove
 
-    public void startPoints()
-    {
-        GetComponent<Speech>().speak("started markers");
-        isPoints = true;
-    }
-
-    public void click()
-    {
-        GetComponent<Speech>().speak("started markers");
-        SendNext("wandNext");
-        if (isPoints)
-        {
-            pointClicked = true;
-        }
-    }
-
-    public void clear()
-    {
-        GetComponent<Speech>().speak("started markers");
-        SendNext("clear");
-    }
-
-    public void next()
-    {
-        Debug.Log("in source next()");
-    }
-
-
     void OnApplicationQuit()
     {
         RosMessenger.Instance.Disconnect();

@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/wheelChairPrime.unity
+    path: Assets/pupil_plugin/Calibration.unity
+    guid: fad12140ef2b4a94c81325c8109f6458
+  - enabled: 1
+    path: Assets/Scene/wheelChairPrime.unity
     guid: a5fb92ef10f021e449538b38d21a3395
   m_configObjects: {}

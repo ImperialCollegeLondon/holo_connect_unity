@@ -1,5 +1,5 @@
-﻿# Hololens PRL holo_connect_unity
----------------------------------
+﻿# Hololens PRL Selection methods (HeadGaze and EyeGaze)
+-------------------------------------------------------
 
 
 ## HoloToolkit
@@ -23,7 +23,30 @@ Follow steps 1 to 3 from [here](https://github.com/Microsoft/MixedRealityToolkit
 
 ![](Images/ImportPackage.PNG)
 
+## PupilLabs
+------------
 
+* Follow steps 1 to 6 [here](https://github.com/pupil-labs/hmd-eyes) under HoloLens Getting Started section.
+
+* Drag the pupil_plugin folder (hmd-eyes-master\unity_pupil_plugin_hololens\Assets) and drop it under under the Assets directory in our project
+
+* Open the Calibration Scene under the pupil_plugin directory you just copied and select Pupil Manager under the Hierarchy
+
+* In the Inspector, look for the Pupil Manager section and write GazeScene in the Element 0 space (Available Scenes/Element 0)
+
+![](Images/PupilManager.PNG)
+
+* Go to Assets/pupil_plugin/Resources, select PupilSettings and in the Inspector, under Conection, specify the Remote Port and Remote IP you see in the Pupil Capture App -> Hololens Relay (Connect remotely: "IP:Port"). This in the windows computer running you will connect the Hololens cameras.
+
+![](Images/PupilCapture.PNG)
+
+![](Images/PupilSettings.PNG)
+
+* Then open PupilGazeTracker.cs script (Assets/pupil_plugin/Scripts/Pupil) and comment the following three lines inside the VisualizeGaze method:
+
+ * _markerLeftEye.UpdatePosition(PupilData._2D.LeftEyePosition);
+ * _markerRightEye.UpdatePosition (PupilData._2D.RightEyePosition);
+ * _markerGazeCenter.UpdatePosition (PupilData._2D.GazePosition);
 
 ## Deploy the App
 -----------------
@@ -34,9 +57,9 @@ Follow steps 1 to 3 from [here](https://github.com/Microsoft/MixedRealityToolkit
 1. Open File > Build Settings window
 2. Click Add Open Scenes to add the scenes.
 
-    **IMPORTANT**: Make sure Scenes/wheelChairPrime scene is selected.
+    **IMPORTANT**: Make sure pupil_plugin/Calibration and Scenes/GazeScene scenes are shown in this order and are selected.
 
-![](Images/Deploy_App_Wheelchair.PNG)
+    ![](Images/Deploy_App.png)
 
 
 3. Change Platform to Universal Windows Platform and click Switch Platform.
@@ -67,4 +90,4 @@ If this is your first time deploying to the Hololens, you will need to pair usin
 ### Try out the app
 -------------------
 
-**TODO
+
